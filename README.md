@@ -39,6 +39,7 @@ For end-to-end setup, test execution, demo procedures, and operator verification
 - **End-to-end runs with provenance (S1):** full runs on F06, F01 and F04 (code `f5ef81a`, each recording its git
   state). The fault was detected 5.0 s, 5.0 s and 6.0 s after the faulty build went live. Every step artifact was
   written and the healthy baseline restored.
+- **No false alarms:** 300 s of healthy traffic (about 6000 requests) raised no incident.
 - **Deployment:** 6 promotions after a passing health window. Three of them were the F06 `overfitting` patch, picked
   because it was the smallest diff: a passing health window is not evidence of correctness.
 - **Rollback:** 1 **staged** rollback. The planted `slow` patch passed V0-V3, a probe took 3016 ms against a 2000 ms

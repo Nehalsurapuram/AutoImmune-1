@@ -201,7 +201,14 @@ def run_ledger(runs_dir: Path | None, rows: list[dict]) -> list[list]:
     out = []
     for d in sorted(p for p in runs_dir.iterdir() if p.is_dir() and not p.name.startswith("pytest-")):
         meta = {}
-        if (d / "run.json").is_file():
+        if (d / "healthy_watch.json").is_file():     # tools/healthy_watch.py (A2 false-alarm check), not a fault run
+            try:
+                meta = json.loads((d / "healthy_watch.json").read_text(encoding="utf-8"))
+                meta = {"fault_id": "-", "diag_mode": "-", "patch_mode": "-", "provenance": meta.get("provenance"),
+                        "outcome": f"healthy watch: {meta.get('result')} ({meta.get('watched_s')} s)"}
+            except json.JSONDecodeError:
+                meta = {"outcome": "healthy watch: unreadable"}
+        elif (d / "run.json").is_file():
             try:
                 meta = json.loads((d / "run.json").read_text(encoding="utf-8"))
             except json.JSONDecodeError:
@@ -390,7 +397,7 @@ def analyse(evidence: Path, faults_dir: Path, runs_dir: Path | None = None) -> t
         label_line = ("> Labels: " + ", ".join(f"{n} {s!r}" for s, n in sorted(label_status.items()))
                       + ". Joined here only; never seen by the pipeline.")
     n_s, n_l = len(by_cohort["scripted"]), len(by_cohort["llm"])
-    ledger_issues = [r for r in ledger if not str(r[4]).startswith(("completed", "gates_only", "rows recorded"))]
+    ledger_issues = [r for r in ledger if not str(r[4]).startswith(("completed", "gates_only", "rows recorded", "healthy watch: no_incident"))]
     md = [
         "# AutoImmune pilot report",
         "",

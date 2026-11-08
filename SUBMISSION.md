@@ -10,6 +10,7 @@
 | `results/pilot_report.md` | All result tables, generated from the raw evidence |
 | [docs/audit/AUDIT_BASELINE.md](docs/audit/AUDIT_BASELINE.md) | Integrity audit of our own evidence, and what was fixed |
 | [README.md](README.md) | Setup, tests, and current pilot status |
+| [docs/DEMO.md](docs/DEMO.md) | Live demo script, pre-demo checklist, fallback plan |
 
 ## Folder map
 | Folder | Contents |

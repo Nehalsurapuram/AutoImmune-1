@@ -137,6 +137,8 @@ uncommitted until sign-off.
 |---|---|---|---|---|
 | F-24 | **Two live runs were produced by code that exists in no commit.** `f06-live-live-20261108t051825z` and `…052717z` (the only live run whose patches applied) have `validation_history` in `patches.json`, and their cached prompts contain `Candidate ID: F06-live-N / Repair attempt: k/2`. Neither string appears in any commit's code or in the working tree (`git log --all -S`); only the recorded outputs survive. This is also where the F-15 prompt leak came from: the current prompts are clean, and a new test guards them. | `runs/f06-live-live-20261108t05*/patches.json`, 4 cache files | Critical (provenance) | Mitigated going forward: every run now records `code_sha256`, git HEAD and dirty state (`pipeline/provenance.py`). The two runs stay in the evidence, flagged in the README and in `acceptance.json`. Ask the team whether anyone still has that repair-loop code. |
 
+**Correction to F-23 (2026-11-08 evening):** an egress-denial test does exist (`tests/test_sandbox.py::test_network_is_blocked_inside_sandbox`, with a positive control on the bridge network). It was skipped during the audit only because Docker was down. It has since passed, and the transcript is in [isolation_test.txt](isolation_test.txt). Earlier wording that "no egress test exists" was wrong.
+
 ## 6d. Fixes applied after the audit (2026-11-08, uncommitted until review)
 
 | Finding | Fix | Verified by |

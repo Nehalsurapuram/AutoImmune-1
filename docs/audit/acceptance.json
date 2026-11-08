@@ -1,6 +1,6 @@
 {
   "_about": "Single source of truth for acceptance-check status (A1-A10) and known limitations. Rendered by tools/make_dashboard.py and mirrored in AUDIT_BASELINE.md section 4. Statuses: PASS, PARTIAL, FAIL, NOT YET TESTED. PASS requires evidence re-executed or a verifiable stored artifact; code existing is not a pass. Update this file, never the dashboard code, when a status changes.",
-  "as_of": "2026-11-08 (evening)",
+  "as_of": "2026-11-09",
   "test_suite": {
     "badge": "205 passed",
     "text": "Full suite on 2026-11-08 after the S0 fixes, with Docker running: 205 passed, 0 failed, 0 skipped in 614 s, including all 16 Docker gate tests. (Before the fixes: 185 passed, 2 failed.)"
@@ -18,9 +18,9 @@
       "id": "A2",
       "name": "Detection within 60 s",
       "criterion": "Incident raised within 60 s of injection; no incident during at least 5 min of healthy load.",
-      "status": "PARTIAL",
-      "evidence": "Swap to incident: F06 5.0 s (probe_mismatch), F01 5.0 s (probe_5xx), F04 6.0 s (health_down, HTTP 503), from the three runs above. Timestamps have 1 s resolution.",
-      "limitation": "No 5-minute healthy-load run checking for false incidents. One measurement per fault."
+      "status": "PASS",
+      "evidence": "Detection: swap to incident 5.0 s (F06, probe_mismatch), 5.0 s (F01, probe_5xx), 6.0 s (F04, health_down), all under 60 s. No false alarm: runs/healthy-watch-20261108t182609z ran the real detector for 300 s against the healthy baseline under 20 req/s load (about 6000 requests: 5408 x HTTP 200, 592 x HTTP 400 from customer-less searches); result no_incident (tools/healthy_watch.py).",
+      "limitation": "One detection per fault; timestamps have 1 s resolution. The healthy window used synthetic load on a laptop."
     },
     {
       "id": "A3",
@@ -42,9 +42,9 @@
       "id": "A5",
       "name": "Isolated Docker sandbox",
       "criterion": "Sandbox runs with --network none and resource limits; an outbound request demonstrably fails; no secret, label or hidden-test mounts.",
-      "status": "NOT YET TESTED",
-      "evidence": "Flags are set in pipeline/sandbox.py. Mount contents are unit-tested (test_sandbox.py::test_trees_never_contain_hidden_tests_and_v2_excludes_target).",
-      "limitation": "No egress-denial test exists or has been executed. An earlier dashboard cited test_no_network, which does not exist."
+      "status": "PASS",
+      "evidence": "docs/audit/isolation_test.txt (2026-11-08, Docker 29.8.0): inside a sandbox container with --network none, DNS lookup -> UnknownHostException, TCP to 1.1.1.1:443 -> Network is unreachable, curl to Maven Central -> could not resolve host. Positive control: the same probe on Docker's bridge network reaches the internet, so the probe is able to detect access. Limits (--memory 2g, --cpus 2, --pids-limit 512, --cap-drop ALL, no-new-privileges, non-root) are set in sandbox_args; mount contents are tested to exclude hidden_tests and labels.",
+      "limitation": "Resource limits are configured but not stress-tested. hidden_tests/ do not exist yet, so 'never mounted' is enforced by code and tests rather than observed against real oracle files."
     },
     {
       "id": "A6",
@@ -58,9 +58,9 @@
       "id": "A7",
       "name": "Every decision branch tested; no error becomes a pass",
       "criterion": "Every decision branch and reason is tested; no error or timeout is treated as a pass.",
-      "status": "PARTIAL",
-      "evidence": "test_decide.py covers the branches. A stored V2 Docker tool error (F06 insecure, live-diagnosis run) is recorded as error and REJECT.",
-      "limitation": "Timeout handling has not been exercised against a real slow container."
+      "status": "PASS",
+      "evidence": "Decision branches are unit-tested (test_decide.py). A real container that exceeded its timeout was killed, removed, and classified as 'timeout', not a pass (test_timeout_kills_and_removes_container, docs/audit/isolation_test.txt). A real Docker tool error on V2 is recorded as 'error' and the candidate rejected (f06-live-diag-4).",
+      "limitation": "Exercised on scripted candidates only."
     },
     {
       "id": "A8",

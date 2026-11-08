@@ -195,3 +195,11 @@ def test_highest_priority_rule_is_reported(tmp_path):
 def test_last_error_block(logs, first):
     block = detector.last_error_block(logs)
     assert (block.splitlines()[0][:30] if block else None) == (first[:30] if first else None)
+
+
+def test_healthy_watch_verdict_never_turns_a_failed_check_into_a_pass():
+    from tools.healthy_watch import verdict
+    assert verdict(None, True) == "no_incident"
+    assert verdict(None, False) == "invalid"                      # baseline not healthy: the window proves nothing
+    assert verdict({"rule": "probe_5xx"}, True) == "incident"
+    assert verdict({"status": "invalid"}, True) == "invalid"

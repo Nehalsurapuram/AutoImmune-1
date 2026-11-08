@@ -1,0 +1,17 @@
+# A5 isolation evidence: python -m pytest -s -v -k 'network or timeout_kills' tests/test_sandbox.py
+# 2026-11-08T18:24:37Z, code 7fe2caa, Docker 29.8.0
+============================= test session starts =============================
+platform win32 -- Python 3.12.0, pytest-9.2.0, pluggy-1.7.0 -- <repo>\.venv\Scripts\python.exe
+rootdir: <repo>
+configfile: pytest.ini
+collecting ... collected 28 items / 25 deselected / 3 selected
+
+tests/test_sandbox.py::test_network_is_blocked_inside_sandbox dns: blocked (UnknownHostException)
+tcp 1.1.1.1:443: blocked (Network is unreachable)
+ curl: (6) Could not resolve host: repo.maven.apache.org
+
+PASSED
+tests/test_sandbox.py::test_network_check_detects_access_when_network_allowed PASSED
+tests/test_sandbox.py::test_timeout_kills_and_removes_container PASSED
+
+====================== 3 passed, 25 deselected in 11.05s ======================
