@@ -34,10 +34,10 @@ and open two terminal windows in the project folder.
 | 3:00 | Dashboard: **Policy Comparison** | "Same patches, different policies: target test only would auto-apply 20 of 26 unsafe patches, adding the full suite 13, our full policy 7, and no correct patch was rejected." |
 | 4:00 | Back to terminal 1: point at the stage lines | "It detected the fault within seconds, diagnosed it, and is gating 5 candidate patches now." |
 | ~5:30 | **HUMAN APPROVAL REQUIRED** appears | "This patch edits a sensitive config file, so the policy will not auto-apply it. It asks a human." Let the examiner read the diff. Type **approve**. |
-| ~6:30 | Run continues: deploy and health window | "It builds a new image, swaps it in, and watches health and latency for 30 s. If anything breaches, it swaps back automatically." |
+| ~6:30 | Run continues: deploy and health window | "It builds a new image, smoke-tests it side by side, swaps it in, and watches health and latency for 30 s. If anything breaches, it swaps back automatically." |
 | ~9:30 | Final summary: **PROMOTED** | "Promoted. Note the wording: the health window passed. The pipeline does not claim the patch is correct." |
-| 10:00 | Dashboard: **Approval & Rollback** | "We also demonstrated automatic rollback: a planted slow patch passed all four gates, then breached the 2-second latency limit and was rolled back in 4 seconds." |
-| 11:00 | Dashboard: **Known Limitations** | "Our key finding: overfitting patches pass every gate. Tests alone cannot prove a fix is correct. That's why the next step is independent hidden-test oracles." |
+| 10:00 | Dashboard: **Approval & Rollback** | "We also demonstrated automatic rollback: a planted slow patch passed all four gates, then breached the 2-second latency limit and was rolled back in about 5 seconds, and we verified the old image was really restored." |
+| 11:00 | Dashboard: **Known Limitations** | "Our key finding: wrong patches can pass every gate. Our independent oracle, with hidden tests the pipeline never sees, found two AI patches that were auto-deployed but incorrect. Tests alone cannot prove a fix is correct." |
 
 **Live run command (F04, human approval in the middle, about 10 min):**
 ```
@@ -61,11 +61,11 @@ Stay calm and say: *"A failed run is recorded too: the pipeline never hides an e
 | Show | Where |
 |---|---|
 | Human approval, then deploy | `runs\f04-rule-scripted-20261108t175754z\F04-scripted-835a25e8\approval.json` and `deploy.json` |
-| Rollback | `runs\f06-rule-scripted-20261108t180955z\F06-scripted-7509cb64\rollback.json` |
+| Rollback | `runs\f06-rule-scripted-20261108t201808z\F06-scripted-7509cb64\rollback.json` |
 | Full run summary | `runs\f01-rule-scripted-20261108t174806z\summary.json` |
 | All tables | `results\pilot_report.md` |
 
-Open a file quickly: `notepad runs\f06-rule-scripted-20261108t180955z\F06-scripted-7509cb64\rollback.json`
+Open a file quickly: `notepad runs\f06-rule-scripted-20261108t201808z\F06-scripted-7509cb64\rollback.json`
 
 Common fixes:
 - `failed to connect to the docker API`: Docker Desktop isn't running. Start it and wait for "Engine running".
@@ -75,9 +75,12 @@ Common fixes:
 ## D. Likely viva questions, with honest answers
 
 **Is the AI fixing the bugs?**
-The AI is used only for diagnosis and drafting patches. In our pilot, local models (qwen2.5-coder 7b and 1.5b) did not
-produce a patch that passed the target test (0 of 17), and we report that openly. The demo uses hand-built candidate
-patches so the gates and the decision logic can be tested in a controlled way.
+The AI is used only for diagnosis and drafting patches. Small local models (qwen2.5-coder 7b and 1.5b) produced no
+patch that passed the target test. With gpt-oss-120b, 7 patches passed all four gates and 5 were auto-applied under our
+policy. One was a real, correct repair (F06, deployed and confirmed correct by the oracle). Two were wrong yet still
+auto-deployed: a null-only guard on F01, and a health check forced to "UP" on F04 after a misdiagnosis. So the AI can
+fix bugs, but passing the tests does not prove a fix is correct. The live demo uses hand-built candidates so every gate
+and decision branch shows up in a controlled way.
 
 **Why not let the AI decide too (an agent)?**
 For safety and auditability: every decision is deterministic code with written reasons, so it can be checked and
@@ -87,14 +90,24 @@ reproduced.
 A test runs inside the sandbox and tries DNS, TCP and HTTPS: all are blocked. A control run on a normal network
 succeeds, which proves the test can detect access (`docs/audit/isolation_test.txt`).
 
+**How do you know a patch is really correct?**
+An independent oracle (`tools/oracle.py`) runs hidden tests the pipeline never sees, plus a performance test and a
+security check, and labels every patch. Its labels are machine labels; a two-person human review is still pending.
+
+**How do you know rollback works?**
+In `f06-rule-scripted-20261108t201808z` a planted slow patch passed every gate and a side-by-side smoke test, was
+deployed, breached the 2000 ms limit (3015 ms) and was rolled back in 5.1 s. The restored image ID matched the previous
+one. It is a staged test, not a real incident.
+
 **What's novel?**
 Not repair or rollback by themselves. We measure what each layer of evidence catches on the same patches, and we show
 honestly where tests fail (overfitting).
 
 **What are the limitations?**
-Three seeded faults, one service, no independent labels yet, local laptop deployment (a container swap, not a canary),
-and only one reviewer.
+Three seeded faults on one service, no held-out faults, oracle labels not yet reviewed by two people, small samples
+(differences are not statistically established), laptop deployment rather than a production canary, and one reviewer
+from the team. Every model missed F04's configuration root cause.
 
 **What would you do next?**
-Hidden-test oracles with blind labels, more faults, stronger models, and side-by-side canary deployment with p95
-latency.
+Blind two-person label review, about 10 more held-out faults, escalate when gate-passing patches disagree, treat
+health-check code as sensitive, and repeat trials with more models.

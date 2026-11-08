@@ -1,9 +1,9 @@
 {
   "_about": "Single source of truth for acceptance-check status (A1-A10) and known limitations. Rendered by tools/make_dashboard.py and mirrored in AUDIT_BASELINE.md section 4. Statuses: PASS, PARTIAL, FAIL, NOT YET TESTED. PASS requires evidence re-executed or a verifiable stored artifact; code existing is not a pass. Update this file, never the dashboard code, when a status changes.",
-  "as_of": "2026-11-09",
+  "as_of": "2026-11-09 (night)",
   "test_suite": {
-    "badge": "205 passed",
-    "text": "Full suite on 2026-11-08 after the S0 fixes, with Docker running: 205 passed, 0 failed, 0 skipped in 614 s, including all 16 Docker gate tests. (Before the fixes: 185 passed, 2 failed.)"
+    "badge": "249 passed",
+    "text": "Full suite including the 16 Docker gate tests: 249 passed in 815 s (2026-11-09, code fd1a403 plus documentation changes)."
   },
   "acceptance_checks": [
     {
@@ -12,7 +12,7 @@
       "criterion": "One command completes detection, diagnosis, candidates, gates, decision and deployment on F01, F04 and F06, with every step artifact.",
       "status": "PASS",
       "evidence": "Full runs with provenance on 2026-11-08, all with outcome completed, every step artifact present and the baseline restored: F06 f06-rule-scripted-20261108t173444z (code f5ef81a, clean tree), F01 f01-rule-scripted-20261108t174806z, F04 f04-rule-scripted-20261108t175754z (both f5ef81a plus uncommitted docs/provenance-fix changes, recorded in run.json).",
-      "limitation": "Rule diagnosis with scripted candidates only. Live-LLM end-to-end has not been demonstrated (no live patch passes V1)."
+      "limitation": "Scripted runs as listed; live-AI end-to-end runs also completed on all three faults (f06-live-live-20261108t193456z, f01-live-live-20261108t195433z, f04-live-live-20261108t200721z)."
     },
     {
       "id": "A2",
@@ -27,16 +27,16 @@
       "name": "Diagnosis with at most 3 ranked causes",
       "criterion": "Valid diagnosis with at most 3 ranked causes and provider mode recorded; localisation measured on live runs.",
       "status": "PARTIAL",
-      "evidence": "Schema-enforced in providers.py. Localisation is now counted once per diagnose() call (results/llm_diagnosis.csv): F01 7b 2/2, F04 7b 0/2, F06 7b 2/2, F06 1.5b 3/3 runs.",
-      "limitation": "Tiny n. Localisation scoring is not blinded. F04 diagnosis misses the root-cause file in both runs."
+      "evidence": "At most 3 ranked causes, schema-enforced; provider mode recorded. Localisation counted once per diagnosis run (results/llm_diagnosis.csv): gpt-oss-120b F01 2/2, F06 2/2, F04 0/1; qwen 7b F01 2/2, F06 2/2, F04 0/2; qwen 1.5b F06 3/3.",
+      "limitation": "Every model misses F04's configuration root cause. Localisation scoring is not blinded. Small n."
     },
     {
       "id": "A4",
       "name": "Candidate generation or logged failure",
       "criterion": "Three candidates or a logged model failure, each applying cleanly or carrying its exact rejection reason.",
-      "status": "PARTIAL",
-      "evidence": "All 17 live attempts are now counted per run with apply_error (results/llm_units.csv). Runs that failed before producing candidates appear in the run ledger (results/runs.csv).",
-      "limitation": "Raw model output is not hashed in the evidence row. 2 live runs came from uncommitted code (audit F-24)."
+      "status": "PASS",
+      "evidence": "Every LLM attempt is recorded per run with its raw-response hash, format status (raw_valid/normalized/invalid), normalizer rules and exact apply error (results/llm_units.csv, runs/*/patches.json). Generation failures stay in the denominator (32 attempts). Runs that failed before producing candidates are in results/runs.csv.",
+      "limitation": "2 early live runs came from uncommitted code (audit F-24) and are flagged."
     },
     {
       "id": "A5",
@@ -44,15 +44,15 @@
       "criterion": "Sandbox runs with --network none and resource limits; an outbound request demonstrably fails; no secret, label or hidden-test mounts.",
       "status": "PASS",
       "evidence": "docs/audit/isolation_test.txt (2026-11-08, Docker 29.8.0): inside a sandbox container with --network none, DNS lookup -> UnknownHostException, TCP to 1.1.1.1:443 -> Network is unreachable, curl to Maven Central -> could not resolve host. Positive control: the same probe on Docker's bridge network reaches the internet, so the probe is able to detect access. Limits (--memory 2g, --cpus 2, --pids-limit 512, --cap-drop ALL, no-new-privileges, non-root) are set in sandbox_args; mount contents are tested to exclude hidden_tests and labels.",
-      "limitation": "Resource limits are configured but not stress-tested. hidden_tests/ do not exist yet, so 'never mounted' is enforced by code and tests rather than observed against real oracle files."
+      "limitation": "Resource limits are configured but not stress-tested. Hidden oracle tests now exist (faults/*/hidden_tests/, gitignored); test_sandbox.py checks that no sandbox tree contains them or labels.json, and the oracle runs them only outside the pipeline (tools/oracle.py)."
     },
     {
       "id": "A6",
       "name": "V1, V2 and V3 each catch distinct bad changes",
       "criterion": "Across seeded candidates, V1, V2 and V3 each stop changes the others do not.",
-      "status": "PARTIAL",
-      "evidence": "Rule-diagnosis runs, by candidate_kind: V1 stops 3 ineffective, V2 stops 3 regressive, V3 stops 3 insecure (results/first_stop.csv). The 16 Docker gate tests were re-executed and passed on 2026-11-08.",
-      "limitation": "candidate_kind is builder intent, not an independent label. Overfitting candidates pass every gate."
+      "status": "PASS",
+      "evidence": "With independent oracle labels (results/gate_incremental.csv, scripted cohort): V1 first-stops 6 incorrect patches, V2 6 regressive (+1 insecure via a tool error, counted separately), V3 5 insecure; 0 of 6 correct patches stopped. All 16 Docker gate tests re-executed and passed.",
+      "limitation": "Oracle labels are machine labels; two-person blind review pending. Overfitting and slow patches pass every gate."
     },
     {
       "id": "A7",
@@ -67,40 +67,47 @@
       "name": "Human approval and auto-apply",
       "criterion": "Real human approval with human_cli provenance, a separate low-risk auto-apply, and real container deployments.",
       "status": "PASS",
-      "evidence": "Human approve then deploy: F04 f04-rule-scripted-20261108t175754z, ESCALATE (sensitive path), approved by an operator at the terminal (approval_source human_cli, 18:06:57Z), deployed and promoted. A malformed answer was refused and re-asked. A separate AUTO_APPLY needing no prompt: F01 and F06 runs. An earlier human reject is also recorded (2026-11-07).",
-      "limitation": "One approval and one rejection. The reviewer was a project member, not an independent reviewer."
+      "evidence": "Human approve then deploy: F04 f04-rule-scripted-20261108t175754z, ESCALATE (sensitive path), approved by an operator at the terminal (approval_source human_cli, 18:06:57Z), deployed and promoted. A malformed answer was refused and re-asked. A separate AUTO_APPLY needing no prompt: F01 and F06 runs. An earlier human reject is also recorded (2026-11-07). Repeated live on 2026-11-09: f04-rule-scripted-20261108t205508z, approved at the terminal (human_cli), smoke-tested side by side, promoted with the image ID verified.",
+      "limitation": "Two human approvals and one rejection. The reviewer was a project member, not an independent reviewer."
     },
     {
       "id": "A9",
       "name": "Promotion and automated rollback",
-      "criterion": "A patched image is promoted on a healthy window; a staged latent regression triggers rollback to the old image digest.",
-      "status": "PARTIAL",
-      "evidence": "Promotion on a healthy window: 6 recorded. Staged rollback: f06-rule-scripted-20261108t180955z deployed the planted slow candidate (passed V0-V3); a probe took 3016 ms against a 2000 ms limit; it rolled back in 4.0 s to the previous image (rollback.json: restored order-service:...-faulty). Classified as staged and never counted as a real catch.",
-      "limitation": "Images are tracked by tag, not digest. Latency is checked per probe, not p95. The candidate container replaces the old one rather than running side by side. No real (unplanned) rollback has been observed."
+      "criterion": "A patched image is promoted on a healthy window; a staged latent regression triggers rollback to the previous image, verified by image ID.",
+      "status": "PASS",
+      "evidence": "Rollback: f06-rule-scripted-20261108t201808z (code fd1a403, clean tree) deployed the planted slow candidate F06-scripted-7509cb64 (passed V0-V3). It first passed a side-by-side smoke test on port 18081 (11.5 s, health UP), then was cut over. In the health window, probe order2-discount-at-threshold took 3015 ms against a 2000 ms limit (window p95 3149.6 ms over 4 requests). It rolled back in 5.1 s to the previous image; restored_image_id sha256:3f32b4374203... equals the recorded previous_image_id and restored_image_verified is true (rollback.json). Promotion: healthy-window promotions are recorded with promoted_image_verified, e.g. f06-live-live-20261108t193456z (p95 5.3 ms over 44 requests). An earlier staged rollback (f06-rule-scripted-20261108t180955z, 4.0 s, tag only) is kept as history.",
+      "limitation": "The rollback is staged (a planted slow patch), never counted as a real catch; no unplanned rollback has been observed. The breach was caught by the per-probe latency limit; p95 needs min_requests and the window was short. Laptop Docker, not a production canary."
     },
     {
       "id": "A10",
       "name": "Evidence regeneration",
       "criterion": "Analysis regenerates exact counts with hashes; raw rows reconcile; scripted and live are never conflated.",
-      "status": "PARTIAL",
-      "evidence": "python analyse.py --check verifies results/ against the inputs. Units no longer drop rows, the cohorts are separated, and the run ledger reconciles runs/ with results/.",
-      "limitation": "No independent labels, so the safety metrics are n/a. Independent reproduction by a second person is pending."
+      "status": "PASS",
+      "evidence": "python analyse.py regenerates every table from results/evidence.jsonl and results/oracle_report.jsonl; --check verifies results/ is current; cohorts never pooled; run ledger reconciles runs/ with results/; reproduce.ps1 regenerates everything and logs SHA-256 of each output.",
+      "limitation": "Independent rerun by a second team member pending."
     }
   ],
   "known_limitations": [
     {
-      "title": "No independent oracle or labels",
+      "title": "Oracle labels not yet human-reviewed",
       "category": "Research validity",
       "severity": "danger",
-      "badge": "Blocker for RQ1",
-      "description": "faults/*/candidates/labels.json and hidden_tests/ do not exist, so UDR, unsafe escape and FRR are n/a. To be built in roadmap S4."
+      "badge": "Pending",
+      "description": "tools/oracle.py labels every candidate (hidden tests, full suite, performance test, security probe). Two-person blind review (docs/label_adjudication.csv) is pending; no held-out faults yet."
     },
     {
-      "title": "Live LLM patches have not passed the target test",
-      "category": "LLM patch generation",
-      "severity": "warning",
-      "badge": "Observed",
-      "description": "17 live attempts. qwen2.5-coder:7b applied 0/9 (diffs without file headers). qwen2.5-coder:1.5b applied 3/8; all 3 failed V1. None was deployed."
+      "title": "AI patches can pass every gate and still be wrong",
+      "category": "Research finding",
+      "severity": "danger",
+      "badge": "Key finding",
+      "description": "Under the full policy, 2 of 5 auto-applied gpt-oss-120b patches were labelled incorrect by the oracle: a null-only guard (F01) and a health indicator forced UP after a misdiagnosis (F04). The correct F04 config fix was escalated but never reached a human, because an AUTO_APPLY candidate existed."
+    },
+    {
+      "title": "A real AI repair works end to end",
+      "category": "Result",
+      "severity": "info",
+      "badge": "S2 exit gate",
+      "description": "gpt-oss-120b diagnosed F06 and drafted a fix that passed V0-V3, was smoke-tested, deployed, promoted (image ID verified) and labelled correct by the oracle (f06-live-live-20261108t193456z)."
     },
     {
       "title": "Two live runs were produced by uncommitted code",
@@ -117,11 +124,11 @@
       "description": "All 3 replay runs (f01, f04, f06) stopped with a replay cache miss. The cache key includes the provider URL."
     },
     {
-      "title": "Rollback shown only as a staged demo; deployment is a container swap",
+      "title": "Rollback shown only as a staged demo",
       "category": "Deployment",
       "severity": "warning",
       "badge": "S3",
-      "description": "One staged rollback (planted slow patch, 4.0 s recovery). No real rollback observed. There is no side-by-side candidate container, latency is checked per probe (not p95), and images are tracked by tag (no digest)."
+      "description": "Two staged rollbacks with a planted slow patch; the latest (f06-rule-scripted-20261108t201808z) recovered in 5.1 s and verified the restored image by ID. Candidates are now smoke-tested side by side before cutover. No real (unplanned) rollback has been observed, and this is a laptop container swap, not a production canary."
     },
     {
       "title": "Overfitting candidates pass every gate and were promoted",

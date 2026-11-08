@@ -2,310 +2,270 @@
 
 **B.Tech Final Year Project Report**
 **Team:** Agni M N, Pradeep S, S Nehal  **Guide:** Mrs. M. Shona
-**Date:** 9 November 2026  **Code version:** git `cfb0237` (tag `baseline-s0` = audited baseline `2bc12e2`)
+**Date:** 9 November 2026  **Code:** git history in this folder (protocol frozen in `docs/protocol_v1.md`)
 
 ---
 
 ## Abstract
 
 AI models can now draft code fixes, but a fix that passes its own test is not necessarily safe to deploy. AutoImmune
-is a hybrid self-healing pipeline for a Java Spring Boot service ("order-service"). It detects a production fault,
-diagnoses it, collects candidate patches, and validates each one in an isolated Docker sandbox through four
-**evidence gates**:
+is a hybrid self-healing pipeline for a Java Spring Boot service. It detects a production fault, diagnoses it,
+collects candidate patches, validates each one in an isolated Docker sandbox through four evidence gates, and then
+decides by fixed rules whether to reject, escalate to a human, or auto-apply:
 - **V0:** the patch applies and compiles.
 - **V1:** the target test passes.
 - **V2:** the full regression suite passes.
 - **V3:** a Semgrep scan finds no new security issues.
 
-A rule-based risk tier then decides to **REJECT**, **ESCALATE** to a human, or **AUTO_APPLY**. Approved patches are
-deployed as a new container image, watched over a health window, and promoted or rolled back. An AI model is used only
-for diagnosis and patch drafting; every decision is deterministic code.
+Deployed patches are smoke-tested side by side, watched over a health window that includes p95 latency, and promoted
+or rolled back with image-ID verification. An AI model is used only for diagnosis and patch drafting. Every patch is
+labelled afterwards by an independent offline oracle the pipeline never sees: hidden specification tests, a
+performance test, the full suite, and a separate security probe.
 
-We demonstrate the full loop with recorded, traceable evidence on three seeded faults:
-- **Detection:** within 5–6 s of the faulty build going live.
-- **Human review:** a real human approval, followed by deployment.
-- **Rollback:** a staged rollback, restoring the previous image in 4.0 s.
+On three seeded faults:
+- **Detection** takes 5–6 s, with no false alarm in 5 minutes of healthy traffic.
+- **Hand-built patches (32 evaluations):** adding gates cut unsafe patches that would be auto-applied from 20/26
+  (target test only) to 13/26 (plus full suite) to 7/26 (full policy), with 0/6 correct patches rejected.
+- **Real AI patches (gpt-oss-120b, 15 attempts):** the model produced a correct, oracle-verified repair that was
+  deployed and promoted automatically.
+- **But under the full policy, 2 of the 5 auto-applied AI patches were wrong.** One guarded only against `null`. The
+  other made the health check always report UP after a misdiagnosis, while the correct fix was escalated and never
+  reached a human.
 
-On 32 scripted candidate evaluations (16 hand-built patches, each evaluated under two diagnosis modes), adding gates
-reduced the number of unsafe-by-construction patches that would be auto-applied:
-- **Target test only:** 20 of 26.
-- **Full suite added:** 13 of 26.
-- **Full AutoImmune policy:** 7 of 26.
-
-No correct patch was rejected. However, **overfitting patches passed every gate and one was promoted three times**, so
-test-based gates and health checks alone cannot certify correctness. Local LLMs (qwen2.5-coder 7b and 1.5b) produced
-0 of 17 patches that passed the target test.
-
-This is a **pilot mechanism study**: one service, three seeded faults, no independent ground-truth labels yet. All
-numbers are counts with stated denominators, not general safety guarantees.
+**Passing tests and health checks is not evidence of correctness.** With three faults and small samples, these are
+pilot results: confidence intervals are wide and policy differences are not statistically established.
 
 ---
 
 ## 1. Introduction
 
 ### 1.1 Problem
-When a production service misbehaves, engineers must find the cause, write a fix, test it and deploy it. LLMs can draft
-fixes quickly, but deploying an AI-written patch without review is risky:
-- it may pass the visible test while being wrong in general (overfitting);
-- it may break other features (regression);
-- it may introduce a vulnerability;
+LLMs can draft fixes for a failing service in seconds. Deploying them unreviewed is risky:
+- a patch may pass the visible test while being wrong in general (overfitting);
+- it may break other features;
+- it may add a vulnerability;
 - it may be correct but slow.
 
-Reviewing every AI patch by hand removes most of the speed benefit.
+Reviewing every patch by hand removes the speed benefit.
 
-### 1.2 Research question
-*How much execution evidence lets an AI-drafted patch deploy without human review, and what does each validation gate
-catch?*
+### 1.2 Research questions (`docs/protocol_v1.md`)
+- **RQ1:** On the same candidates, how do unsafe auto-apply (UDR) and human-review (HIR) rates change across policies
+  B0–B3?
+- **RQ2:** Can gate patterns rank unsafe patches? *Not attempted: too little data. Reported as insufficient evidence.*
+- **RQ3:** Which gate first stops each unsafe patch, and what does each gate cost in time?
 
-### 1.3 Objectives
-1. Build a fixed (non-agentic) pipeline: observe → detect → diagnose → candidate patches → validate (V0–V3) → risk tier
-   → decide → deploy → health window → promote or roll back → record evidence.
-2. Run every gate inside an isolated Docker sandbox; treat a timeout or tool error as a failure, never a pass.
-3. Compare deployment policies of increasing evidence depth on the same candidates.
-4. Record complete, reproducible evidence for every candidate and run.
-
-### 1.4 Scope and honest limits
-- This is a **controlled research prototype on a laptop**, not a production system.
-- It covers three seeded faults, scripted candidate patches (to exercise the gates), and a small pilot of live LLM
-  patches.
-- We claim **no** calibrated probabilities, **no** general safety guarantee, and **no** novelty for repair,
-  verification or rollback as individual techniques.
+### 1.3 Scope
+- A controlled research prototype on one laptop.
+- One service, three seeded faults.
+- **No** production claims, **no** calibrated probabilities, **no** novelty claimed for repair, verification or
+  rollback on their own.
 
 ---
 
 ## 2. Related work
-
-Closely related work, as listed in the project roadmap (to be verified against the full texts before publication):
-- **ORCA** (Gao et al., 2026): observability-grounded microservice repair and telemetry-based patch verification.
-- **Abstain and Validate** (Cambronero et al.): policies that filter repair attempts before human review.
+Closely related work, as listed in the project roadmap (to be checked against the full texts before publication):
+- **ORCA** (Gao et al., 2026): observability-grounded microservice repair.
+- **Abstain and Validate** (Cambronero et al.): filtering repair attempts before review.
 - **Meta Diff Risk Score** (2025): risk scoring for code changes.
-- **HealBench/HealGuard** (Tan et al., 2026): benchmarking and guardrails for runtime healing.
-- **Sajadi et al.** (2025): a large-scale security analysis of AI-generated patches.
+- **HealBench/HealGuard** (Tan et al., 2026): guardrails for runtime healing.
+- **Sajadi et al.** (2025): security of AI-generated patches.
 
-These works already cover telemetry-driven repair, layered verification, risk scoring and patch-safety evaluation.
-AutoImmune's narrower contribution is a **transparent, reproducible comparison of deployment-decision policies over the
-same patch candidates**, measuring what each extra layer of evidence catches and costs.
+Our narrower contribution is a reproducible comparison of deployment policies on the *same* independently labelled
+candidates, including real AI patches.
 
 ---
 
 ## 3. System design
 
-### 3.1 Architecture
-
 ```
- order-service (Docker) ──► detector ──► diagnose (LLM or rule) ──► draft patches (LLM or scripted)
-                                                                          │
-              ┌───────────────── Docker sandbox, --network none ─────────┘
-              ▼
-   V0 apply+compile → V1 target test → V2 full suite → V3 Semgrep (new findings only)
-              │
-              ▼
-   decide(): REJECT / ESCALATE (human) / AUTO_APPLY        ← thresholds in config/decision.yaml
-              │
-              ▼
-   build new image → swap → health window (health UP, latency < 2000 ms, probe values)
-              │                          │
-           promote                  roll back to previous image
-              │
-              ▼
-   evidence row per candidate (results/evidence.jsonl) + run artifacts (runs/<run_id>/)
+service ──► detector ──► diagnose (LLM | rule) ──► draft patches (LLM | scripted) ──► format check (recorded)
+                                                                                     │
+   Docker sandbox, --network none:  V0 apply+compile → V1 target test → V2 full suite → V3 Semgrep (new findings)
+                                                                                     │
+   decide(): REJECT | ESCALATE (human) | AUTO_APPLY  (config/decision.yaml)
+                                                                                     │
+   build image → SMOKE TEST side by side (port 18081) → cutover → health window (health, probes, latency, p95)
+                                   │                                         │
+                          no cutover if unhealthy              promote (image ID verified) | roll back (verified)
+                                                                                     │
+   evidence row per candidate + run.json provenance (commit, dirty state, code/prompt/config hashes, model)
+
+   OFFLINE, never seen by the pipeline:  oracle = hidden tests + full suite + performance test + security probe
 ```
 
-### 3.2 Components (Python 3.12 orchestrator, `pipeline/`)
 | Module | Role |
 |---|---|
-| `detector.py`, `observe.py` | Probe the service and Prometheus metrics; raise an incident on a probe mismatch, an HTTP 5xx, health DOWN or a latency breach |
-| `providers.py` | One provider interface with modes `live`, `replay`, `scripted`, `rule`; the **only** place an LLM is used (diagnose, draft patches); bounded retries; responses cached |
-| `sandbox.py` | Gates V0–V3 in Docker: `--network none`, 2 GB memory, 2 CPUs, PID limit, `--cap-drop ALL`, non-root, read-only Maven cache. Isolation verified: DNS, TCP and HTTPS are all blocked inside the sandbox, while a control probe on a normal network succeeds (`docs/audit/isolation_test.txt`) |
-| `decide.py` | Rule-based risk tier and decision with explicit reasons |
-| `deploy.py` | Image build, container swap, health window, rollback to the previous image, CLI human approval |
-| `record.py` | Schema-validated evidence row per candidate (schema v2 includes the patch SHA-256) |
-| `provenance.py` | Per-run fingerprint: git commit and dirty state, code, prompt and config hashes, model, Python, OS and Docker versions |
-| `orchestrator.py` | The fixed 10-step run; writes every artifact; always restores the healthy baseline |
-| `analyse.py` | The only module that reads labels; regenerates all tables; `--check` detects stale reports |
+| `pipeline/detector.py`, `observe.py` | Probes and Prometheus metrics; incident on probe mismatch, 5xx, health DOWN, or latency/p95 breach |
+| `pipeline/providers.py` | The only LLM use: diagnose and draft patches (live, replay, scripted, rule). Every raw response is hashed. A deterministic, versioned diff normalizer repairs **format only** (missing headers or line numbers, apply_patch markers), records every rule it fires, and keeps the raw diff. |
+| `pipeline/sandbox.py` | Gates in Docker: no network, 2 GB memory, 2 CPUs, PID limit, all capabilities dropped, non-root. Isolation verified (`docs/audit/isolation_test.txt`). |
+| `pipeline/decide.py` | Rule-based tier and decision, with written reasons |
+| `pipeline/deploy.py` | Side-by-side smoke test before cutover, image IDs, health window with p95, verified rollback, CLI human approval |
+| `pipeline/provenance.py` | Per-run fingerprint, so any result traces to exact code |
+| `tools/oracle.py` | Independent offline labels: invalid / unknown / regressive / incorrect / slow / insecure / correct |
+| `analyse.py` | All tables, Wilson intervals, fault-cluster bootstrap, gate-cost table; `--check` detects stale reports |
 
-### 3.3 Decision rules (`config/decision.yaml`)
-- **REJECT** (high risk): V0, V1 or V2 fails, or a new high-severity Semgrep finding.
-- **ESCALATE** (medium risk): all gates pass, but there is a new low-severity finding, the diff exceeds 20 lines, a file
-  outside the diagnosed file is touched, a sensitive path is touched (`application.properties`, `security/`), or the
-  diagnosis samples disagree.
-- **AUTO_APPLY** (low risk): all gates pass, no new findings, and the diff stays inside the diagnosed file and within
-  the size limit.
-
-### 3.4 Integrity rules
-- Hidden tests and labels are never mounted in the sandbox and never shown to the model or the decision engine. A test
-  scans prompts for fault ids and oracle words.
-- Scripted and rule results are never reported as LLM results; the analysis keeps the two cohorts separate.
-- A human approval is recorded as `human_cli` only when typed by a person at the terminal; scripted approvals are
-  labelled `scripted_test`.
-- Rollback swaps container images and never uses `git reset`.
+**Decision rules:**
+- **REJECT** if V0, V1 or V2 fails, or V3 finds a new high-severity issue.
+- **ESCALATE** if everything passes but the patch touches a sensitive path or a file outside the diagnosed one, is
+  larger than 20 lines, raises a low-severity finding, or the diagnosis samples disagree.
+- **AUTO_APPLY** otherwise.
+- When several candidates qualify, the smallest AUTO_APPLY patch is deployed; an ESCALATE goes to a human only when no
+  AUTO_APPLY exists.
 
 ---
 
 ## 4. Experimental setup
+- **Faults** (`docs/fault_catalog.csv`):
+  - F01, null handling: a search without a customer returns 500 instead of 400.
+  - F04, configuration: the catalog is disabled, so health is DOWN.
+  - F06, business logic: an order of exactly 1000.00 loses its discount.
 
-### 4.1 Faults (seeded into order-service)
-| Fault | Type | What breaks | Observable symptom |
-|---|---|---|---|
-| F01 | Null handling | Null/blank guard removed in `searchByCustomer` | `GET /api/orders/search` without `customer` returns HTTP 500 (NullPointerException) instead of 400 |
-| F04 | Configuration | `orders.catalog.enabled=false` | `/actuator/health` returns 503 DOWN |
-| F06 | Business logic | Discount threshold `>= 1000` changed to `> 1000` | `GET /api/orders/2/discount` returns 1000.00 instead of 900.00, with no error logged |
-
-### 4.2 Candidate patches
-- **Scripted (mechanism checks):** 16 hand-built patches, one of each kind per fault: `correct`, `overfitting` (passes
-  the target test only), `regressive` (breaks another test), `insecure` (adds an SQL-injection pattern) and
-  `ineffective`, plus `slow` for F06 (correct, but adds a 3 s delay). The kind is the builder's intent, **not an
-  independent label**.
-- **Live LLM:** qwen2.5-coder:7b and qwen2.5-coder:1.5b via a local Ollama endpoint, 3 patches requested per
-  diagnosis.
-
-### 4.3 Policies compared on the same candidates
-| Policy | Rule |
-|---|---|
-| B0 | A human reviews everything (theoretical perfect-reviewer baseline) |
-| B1 | Auto-apply if V0 and V1 pass, else reject |
-| B2 | Auto-apply if V0–V2 pass, else reject |
-| B3 | AutoImmune: V0–V3 plus scope and risk rules (can escalate) |
-
-### 4.4 Environment
-Windows 11, Docker Desktop 4.91 (engine 29.8.0), Python 3.12, Maven image `maven:3.9-eclipse-temurin-17`, Semgrep
-1.100.0. Exact Python package versions are in `requirements.lock`.
+  All three are seeded faults and **development** faults: there is no held-out set (`docs/data_split.json`).
+- **Scripted cohort:** 16 hand-built patches (correct, overfitting, regressive, insecure, ineffective, plus slow for
+  F06), each evaluated under two diagnosis modes: 32 units.
+- **LLM cohort:** every attempt counts, including failures. That is 32 attempts:
+  - qwen2.5-coder 7b: 9 attempts;
+  - qwen2.5-coder 1.5b: 8 attempts;
+  - **openai/gpt-oss-120b** via Groq: 15 attempts over 5 runs.
+- **Oracle** (`tools/oracle.py`, rules fixed in `docs/protocol_v1.md`). For each fault, hidden tests encode the
+  specification on inputs the target test does not use. A performance test requires under 1000 ms. A regex security
+  probe on added lines is deliberately different from gate V3. **Machine labels; two-person blind review is
+  pending** (`docs/label_adjudication.csv`).
+- **Policies:**
+  - B0: a human reviews everything (an assumed perfect reviewer);
+  - B1: V0 + V1;
+  - B2: V0–V2;
+  - B3: AutoImmune.
 
 ---
 
 ## 5. Results
+All numbers are regenerated by `python analyse.py` from `results/evidence.jsonl` and `results/oracle_report.jsonl`,
+and checked by `python analyse.py --check`. `reproduce.ps1` reruns everything.
 
-All numbers below are regenerated by `python analyse.py` from `results/evidence.jsonl` (101 rows) and verified by
-`python analyse.py --check`. Raw artifacts for every run are in `runs/<run_id>/`.
+### 5.1 The full loop (scripted, with provenance)
+| Run | Fault | Detected after | Outcome |
+|---|---|---|---|
+| f06-rule-scripted-20261108t173444z | F06 | 5.0 s | smallest passing patch promoted (the overfitting one) |
+| f01-rule-scripted-20261108t174806z | F01 | 5.0 s | correct patch promoted |
+| f04-rule-scripted-20261108t175754z | F04 | 6.0 s | escalated, **human approved**, deployed, promoted |
+| f06-rule-scripted-20261108t180955z | F06 | — | planted slow patch: 3016 ms over the 2000 ms limit, rolled back in 4.0 s (before the S3 changes; image tracked by tag) |
+| f06-rule-scripted-20261108t201808z | F06 | 5.0 s | planted slow patch passed the side-by-side smoke test (11.5 s), then 3015 ms over the 2000 ms limit: **rolled back in 5.1 s**, restored image ID verified |
+| f04-rule-scripted-20261108t205508z | F04 | 5.0 s | rerun live: escalated, **human approved**, smoke-tested side by side, promoted (image ID verified) |
+| healthy-watch-20261108t182609z | — | — | 300 s of healthy load (about 6000 requests): **no false incident** |
 
-### 5.1 End-to-end runs with full provenance (code `f5ef81a`; the F01, F04 and rollback runs also had small uncommitted docs/provenance-fix changes, recorded in each `run.json`)
-| Run | Fault | Detected after | Gates and decision | Deployment outcome |
+### 5.2 What each gate catches (scripted, oracle-labelled; `results/gate_incremental.csv`)
+| Through gate | Unsafe stopped (cumulative, of 26) | Correct rejected (of 6) | Gate time, all 32 units |
+|---|---|---|---|
+| V0 | 0 | 0 | 363 s |
+| V0–V1 | 6 (the incorrect "ineffective" patches) | 0 | 1804 s |
+| V0–V2 | 13 (+6 regressive, +1 insecure stopped by a tool error) | 0 | 2885 s |
+| V0–V3 | 18 (+5 insecure) | 0 | 3101 s |
+
+The oracle independently labelled all 16 scripted patches exactly as their builders intended. The 8 that pass every
+gate are **overfitting** (labelled incorrect) and **slow** patches. Gate times come from the latest run of each unit on
+one laptop and vary between runs (the F06 rerun's V1 took up to 171 s against about 25 s earlier), so treat them as
+rough costs; the counts do not depend on them.
+
+### 5.3 Policy comparison, scripted cohort (32 units)
+| Policy | Auto-applied | Unsafe auto-applied (of 26 unsafe) | UDR (unsafe share of auto-applied) | Correct rejected | Escalated |
+|---|---|---|---|---|---|
+| B1 | 26 | **20** | 20/26 = 77% | 0/6 | 0 |
+| B2 | 19 | **13** | 13/19 = 68% | 0/6 | 0 |
+| B3 | 11 | **7** | 7/11 = 64% | 0/6 | 3 |
+
+Scripted unsafe prevalence is set by design (26 of 32), so UDR here is **not** an estimate of AI safety. Fault-cluster
+bootstrap (3 clusters): the B1−B3 UDR difference is 0.13, 95% interval [−0.25, 0.25], **not established**.
+
+### 5.4 Real AI patches (LLM cohort)
+| Model | Attempts | Applied cleanly | Passed all gates | Auto-applied (B3) |
 |---|---|---|---|---|
-| f06-rule-scripted-20261108t173444z | F06 | 5.0 s (probe mismatch) | 3 AUTO_APPLY, 3 REJECT | `overfitting` patch promoted (smallest diff) |
-| f01-rule-scripted-20261108t174806z | F01 | 5.0 s (HTTP 500) | 2 AUTO_APPLY, 3 REJECT | `correct` patch promoted |
-| f04-rule-scripted-20261108t175754z | F04 | 6.0 s (health 503) | 2 ESCALATE, 3 REJECT | **human approved** (`human_cli`), deployed, promoted |
-| f06-rule-scripted-20261108t180955z | F06 | — | planted `slow` patch forced | **rolled back in 4.0 s** (probe 3016 ms > 2000 ms limit) |
+| qwen2.5-coder 7b | 9 | 0 | 0 | 0 |
+| qwen2.5-coder 1.5b | 8 | 3 | 0 | 0 |
+| **openai/gpt-oss-120b** | 15 | 8 (after recorded format normalization) | 7 | 5 |
 
-Every run wrote all ten step artifacts, recorded its code version, and restored the healthy baseline afterwards.
+The three AI patches that were actually deployed (each one auto-applied, smoke-tested, promoted, image ID verified):
 
-**No false alarms:** the detector watched the healthy service for 300 s under 20 requests/s (about 6000 requests, including invalid requests answered with HTTP 400) and raised no incident (`runs/healthy-watch-20261108t182609z/healthy_watch.json`).
+| Run | Patch | What it does | Oracle |
+|---|---|---|---|
+| f06-live-live-20261108t193456z | F06-live-1 | `> 0` becomes `>= 0` | **correct**: a real AI repair, end to end |
+| f01-live-live-20261108t195433z | F01-live-2 | throws only if `customer == null` | **incorrect**: blank customer not rejected (hidden tests 2/5 failed) |
+| f04-live-live-20261108t200721z | F04-live-2 | health indicator always reports UP | **incorrect**: hides the fault |
 
-### 5.1b Acceptance checks (A1–A10)
-| PASS | PARTIAL | FAIL |
-|---|---|---|
-| A1 full loop on 3 faults, A2 detection < 60 s with no false alarm in 5 min, A5 sandbox isolation, A7 errors and timeouts never pass, A8 human approval and auto-apply | A3 diagnosis (F04 missed), A4 LLM candidates (none pass V1), A6 gates catch distinct faults (no independent labels), A9 rollback (staged only, no digests), A10 regeneration (no independent labels) | none |
-
-Details and evidence for each check: `docs/audit/acceptance.json`, rendered in the dashboard.
-
-### 5.2 What each gate catches (32 scripted unit evaluations)
-| Candidate kind | First stop |
-|---|---|
-| ineffective | **V1** (6/6) |
-| regressive | **V2** (6/6) |
-| insecure | **V3** (5/6); 1 stopped at V2 by a Docker tool **error**, recorded as an error, not a pass |
-| correct | passed all gates: AUTO_APPLY (4) or ESCALATE for F04's config file (2) |
-| overfitting | **passed all gates**: AUTO_APPLY (5), ESCALATE (1) |
-| slow | passed all gates; caught only by the health window (staged rollback) |
-
-Median gate time: V0 5.8 s, V1 26.4 s, V2 28.7 s, V3 5.7 s.
-
-### 5.3 Policy comparison (same 32 scripted units)
-"Unsafe" here means unsafe **by construction** (builder intent), not independently labelled.
-
-| Policy | Auto-applied | Unsafe-by-construction auto-applied | Correct patches rejected | Escalated to a human |
+| Policy (AI cohort, 32 attempts) | Auto-applied | UDR | Correct rejected | Escalated |
 |---|---|---|---|---|
-| B0 human reviews all | 0/32 | 0 | 0/6 | 32/32 |
-| B1 V0+V1 | 26/32 | **20 / 26** | 0/6 | 0 |
-| B2 V0–V2 | 19/32 | **13 / 26** | 0/6 | 0 |
-| B3 AutoImmune | 11/32 | **7 / 26** (5 overfitting, 2 slow) | 0/6 | 3/32 |
+| B1 / B2 | 7 | **3/7** (43%) | 0/4 | 0 |
+| B3 | 5 | **2/5** (40%) | 0/4 | 2 |
 
-Each added gate removed a distinct class of unsafe patch (regressive at V2, insecure at V3) at no cost in rejected
-correct patches. The remaining escapes are overfitting patches, which no gate in the pipeline can detect, and slow
-patches, which only the post-deployment health window catches.
+Bootstrap intervals for the AI cohort span [0, 1]: far too few faults to compare policies statistically.
 
-### 5.4 Live LLM pilot
-| Model | Attempts | Applied cleanly | Passed V1 | Deployed |
-|---|---|---|---|---|
-| qwen2.5-coder:7b | 9 | 0 (diffs missing `---`/`+++` file headers) | 0 | 0 |
-| qwen2.5-coder:1.5b | 8 | 3 | 0 | 0 |
+### 5.5 Diagnosis (one count per diagnosis run)
+| Fault | gpt-oss-120b | qwen 7b | qwen 1.5b |
+|---|---|---|---|
+| F01 | 2/2 | 2/2 | — |
+| F04 | **0/1** | **0/2** | — |
+| F06 | 2/2 | 2/2 | 3/3 |
 
-Diagnosis localisation, counted once per diagnosis run: F01 2/2, F06 5/5 (both models), **F04 0/2**. The model missed
-the configuration root cause. Two 1.5b runs were produced by code that was never committed, and we report that openly
-(see 6.3).
+Every model missed F04's configuration root cause and blamed the health-indicator class instead.
 
 ---
 
 ## 6. Discussion
 
-### 6.1 Main findings
-1. **Layered evidence helps, and each gate catches something different.** V1 stops ineffective fixes, V2 regressions
-   and V3 insecure code. With all four, unsafe-by-construction auto-applies fell from 20 to 7 of 26 with no correct
-   patch rejected.
-2. **Tests cannot certify correctness.** Overfitting patches passed every gate and the health window. When two patches
-   both pass, the pipeline cannot tell the overfitting one from the correct one, and it promoted the overfitting patch
-   on F06 because it was smaller. Measuring this requires an **independent oracle** (hidden tests), which is the most
-   important next step.
-3. **Post-deployment monitoring is a separate safety layer.** The slow patch passed all gates and was caught only by
-   the health window, which rolled it back automatically in 4 s.
-4. **Small local LLMs are not yet usable as patch generators here.** 0 of 17 live patches passed the target test.
-   Format failures (missing diff headers) dominated for the 7b model.
+### 6.1 Findings
+1. **Each gate catches a different class.** V1 catches ineffective patches, V2 regressions and V3 insecure code. With
+   all gates, unsafe scripted auto-applies fell from 20 to 7 of 26, with no correct patch rejected.
+2. **A real AI repair works end to end.** gpt-oss-120b diagnosed F06, drafted a correct fix that passed every gate,
+   and the fix was deployed automatically. The oracle confirms it is correct.
+3. **Tests and health checks cannot certify correctness.** Overfitting patches, whether hand-built or AI-written
+   (F01-live-2), pass every gate and the health window.
+4. **A misdiagnosis corrupts the scope rule.** On F04 the AI blamed the wrong file. The patch that hid the symptom
+   stayed "inside the diagnosed file" and was auto-applied. The correct config fix was escalated, but never reached a
+   human, because the policy prefers an auto-apply candidate over an escalated one. We report this as a policy-design
+   finding. We did **not** change the policy after seeing the results. Candidate fixes for future work:
+   - escalate when several gate-passing candidates disagree;
+   - never let an AUTO_APPLY win over an ESCALATE for the same incident without review;
+   - treat health-indicator changes as sensitive.
+5. **Post-deployment monitoring is a separate layer.** The slow patch passed all gates and was caught only by the
+   health window.
 
 ### 6.2 Threats to validity
-- One service and three seeded faults; scripted candidates were written by the team.
-- **No independent ground-truth labels:** "unsafe" means builder intent. Hidden-test oracles and blind two-person
-  labelling are future work.
-- Small, correlated samples: the 32 scripted units are 16 patches under two diagnosis modes, not 32 independent bugs.
-- The deployment is a container swap on a laptop with simulated probes, not a production canary. Latency is checked
-  per probe, not as p95.
-- The human reviewer was a team member.
+- Three seeded development faults, one service, no held-out set.
+- Machine oracle labels: two-person blind review is pending.
+- The security probe overlaps in intent with V3.
+- Small, clustered samples: the AI cohort has 5 auto-applies over 3 faults.
+- Format normalization is a recorded repair. Raw-valid and normalized rates are both stored.
+- A laptop container swap with a side-by-side smoke test, not a production canary.
+- The reviewer is a team member.
+- Hosted model behaviour can change over time.
 
-### 6.3 Reproducibility and the integrity audit
-Before the final runs we audited our own evidence (`docs/audit/AUDIT_BASELINE.md`). We found and fixed:
-- a stale pilot report;
-- an analysis rule that silently dropped 54 of 79 evidence rows;
-- scripted patches shown in LLM tables;
-- inflated diagnosis counts;
-- dashboard claims not backed by data;
-- two live runs produced by uncommitted code.
-
-Every run now records its exact code version, and every report can be regenerated and checked with one command.
+### 6.3 Integrity
+We audited our own evidence (`docs/audit/AUDIT_BASELINE.md`). We fixed stale reports, 54 silently dropped rows, mixed
+cohorts and hand-typed dashboard numbers, and we disclosed two runs made with uncommitted code. Every run now records
+its code version. Failed runs remain in the run ledger. Two runs that were disturbed by our own mistakes are kept and
+annotated (`NOTE.txt`, `INTERRUPTED.txt`), not deleted.
 
 ---
 
 ## 7. Conclusion and future work
-
-AutoImmune shows a complete, traceable self-healing loop: detection in seconds, sandboxed multi-gate validation,
-rule-based decisions with human escalation, and deployment with automatic rollback. The evidence shows that each gate
-adds distinct protection, but also that passing tests and health checks is not proof of correctness.
+AutoImmune demonstrates a complete, traceable self-healing loop with real AI repairs, layered gates, human escalation,
+safe deployment and automatic rollback. Layered evidence reduces unsafe auto-application, but our independent oracle
+shows that passing every test is not proof of correctness: 2 of 5 auto-applied AI patches were wrong.
 
 **Future work:**
-1. Independent hidden-test oracles and blind labels, so the true unsafe-deployment rate (UDR) and false-rejection rate
-   (FRR) can be measured.
-2. About 10 more faults, split into development and held-out sets.
-3. Stronger LLMs, with structured diff output.
-4. A side-by-side canary deployment with p95 latency and image digests.
-5. Uncertainty analysis clustered by fault.
+- two-person blind label review;
+- about 10 held-out faults;
+- the policy changes listed in 6.1;
+- more models and trials;
+- a production-style canary.
 
----
-
-## Appendix A: How to reproduce
+## Appendix A: Reproduce
 ```
 py -3.12 -m venv .venv
 .\.venv\Scripts\pip install -r requirements.lock
-.\.venv\Scripts\python -m pytest -rs                       # 205 tests (Docker running)
-.\.venv\Scripts\python -m pipeline run --fault F06 --diag-mode rule --patch-mode scripted
-.\.venv\Scripts\python analyse.py                          # regenerate results/
-.\.venv\Scripts\python analyse.py --check                  # verify results/ is current
-.\.venv\Scripts\python tools\make_dashboard.py             # results/dashboard.html
+powershell -ExecutionPolicy Bypass -File reproduce.ps1 -Tests          # tests + regenerate everything
+.\.venv\Scripts\python tools\oracle.py --only-new                       # oracle labels (Docker)
 ```
 
-## Appendix B: Where the evidence is
-| Claim | Evidence |
-|---|---|
-| End-to-end runs, detection times | `runs/f0*-rule-scripted-20261108t17*/` (`run.json`, `incident.json`, `faulty_deploy.json`) |
-| Human approval and deploy | `runs/f04-rule-scripted-20261108t175754z/F04-scripted-835a25e8/approval.json`, `deploy.json` |
-| Staged rollback | `runs/f06-rule-scripted-20261108t180955z/F06-scripted-7509cb64/rollback.json` |
-| Gate and policy tables | `results/first_stop.csv`, `results/policies.csv`, `results/pilot_report.md` |
-| LLM pilot | `results/llm_units.csv`, `results/llm_patch_utility.csv`, `results/llm_diagnosis.csv` |
-| Acceptance checks A1–A10 | `docs/audit/acceptance.json`, rendered in `results/dashboard.html` |
-| Audit | `docs/audit/AUDIT_BASELINE.md` |
+## Appendix B: Evidence map
+See `docs/claim_ledger.csv`: every number in this report, linked to the file that produces it.
