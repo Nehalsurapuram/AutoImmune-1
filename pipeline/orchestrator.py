@@ -193,7 +193,7 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
 
             step(3, "FAULT INJECTION & INCIDENT DETECTION")
             faulty_src = sandbox.prepare_patched_app(fault, None, Path(tmp) / "faulty")
-            faulty = deploy.deploy(faulty_src, f"{run_id}-faulty", cfg)
+            faulty = deploy.deploy(faulty_src, f"{run_id}-faulty", cfg, smoke=False)   # injected fault: no smoke test
             _write(run_dir / "faulty_deploy.json", {k: v for k, v in faulty.items() if k != "swap_clock"})
             print(f"  running {faulty['new_image']} (answering after {faulty['swap_to_answer_s']}s)", flush=True)
             incident = detector.watch(cfg.get("detect_timeout_s", 60), run_id=run_id, fault_id=fault)

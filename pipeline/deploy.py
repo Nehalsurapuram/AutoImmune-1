@@ -286,8 +286,12 @@ def record_probes(repo: Path = REPO, cfg: dict | None = None, http_get=requests.
 
 # --------------------------------------------------------------------------- deploy / rollback / release
 
-def deploy(patched_source_dir: Path, run_id: str, cfg: dict | None = None) -> dict:
-    """Build the patched source, swap the running container to it, wait until it answers."""
+def deploy(patched_source_dir: Path, run_id: str, cfg: dict | None = None, *, smoke: bool = True) -> dict:
+    """Build the patched source, swap the running container to it, wait until it answers.
+
+    smoke=True (every candidate patch): smoke-test side by side first; a failure means no cutover.
+    smoke=False ONLY for deliberate fault injection: a faulty build is often meant to be unhealthy (F04), and the
+    smoke test would otherwise refuse to inject it, so no incident could ever be observed."""
     cfg = cfg or load_config()
     previous = current_image()
     if previous is None:
@@ -295,8 +299,8 @@ def deploy(patched_source_dir: Path, run_id: str, cfg: dict | None = None) -> di
     tag = image_tag(run_id)
     build_s = build_image(Path(patched_source_dir), tag)   # a failed build leaves the running app untouched
     ids = {"previous_image_id": image_id(previous), "new_image_id": image_id(tag)}
-    smoke = smoke_test(tag, cfg)
-    if not smoke["passed"]:                                # no cutover: the live app keeps serving
+    smoke = smoke_test(tag, cfg) if smoke else {"passed": None, "skipped": "fault injection"}
+    if smoke["passed"] is False:                           # no cutover: the live app keeps serving
         return {"run_id": run_id, "new_image": tag, "previous_image": previous, "build_s": round(build_s, 1),
                 "smoke": smoke, **ids, "cutover": False, "answered": False, "swap_to_answer_s": None,
                 "swap_started_at": None, "swap_clock": None}

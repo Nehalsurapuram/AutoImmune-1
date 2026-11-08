@@ -335,3 +335,16 @@ def test_rollback_is_verified_by_image_id(monkeypatch):
     none = deploy.rollback_verified("order-service:baseline", "order-service:new", {}, 0.0, CFG, None)
     assert (ok["restored_image_verified"], bad["restored_image_verified"], none["restored_image_verified"]) == \
         (True, False, None)
+
+
+def test_fault_injection_skips_the_smoke_test_and_still_cuts_over(monkeypatch):
+    """Regression (live F04 run 20261108): an injected unhealthy build must still be deployed so the fault is seen."""
+    calls = []
+    monkeypatch.setattr(deploy, "current_image", lambda: "order-service:baseline")
+    monkeypatch.setattr(deploy, "build_image", lambda src, tag: 1.0)
+    monkeypatch.setattr(deploy, "image_id", lambda tag: "sha256:x")
+    monkeypatch.setattr(deploy, "smoke_test", lambda tag, cfg: pytest.fail("smoke test must not run for a fault"))
+    monkeypatch.setattr(deploy, "_run_app", lambda tag, cfg: calls.append(tag))
+    monkeypatch.setattr(deploy, "wait_until", lambda cfg, healthy, **k: 1.0)
+    dep = deploy.deploy(Path("."), "r-faulty", CFG, smoke=False)
+    assert dep["cutover"] is True and calls == ["order-service:r-faulty"] and dep["smoke"]["passed"] is None

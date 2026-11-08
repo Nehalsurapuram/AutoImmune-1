@@ -141,7 +141,7 @@ def inject_fault(fault: str, seconds: float, use_probes: bool = True) -> None:
     run_id = f"detect-{fault}-{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}".lower()
     with tempfile.TemporaryDirectory(prefix="autoimmune-fault-") as tmp:
         src = sandbox.prepare_patched_app(fault, None, Path(tmp))
-        dep = deploy.deploy(src, run_id)
+        dep = deploy.deploy(src, run_id, smoke=False)   # injected fault: no smoke test
     print(f"deployed faulty build {dep['new_image']} (previous {dep['previous_image']}), "
           f"answering after {dep['swap_to_answer_s']}s", flush=True)
     watch(seconds, run_id, fault, use_probes)

@@ -66,7 +66,8 @@ def faked(tmp_path, monkeypatch):
     monkeypatch.setattr(deploy, "current_image", lambda: state["image"])
     monkeypatch.setattr(deploy, "_health", lambda cfg: {"ok": state["image"] == "order-service:baseline"})
 
-    def fake_deploy(src, run_id, cfg):
+    def fake_deploy(src, run_id, cfg, smoke=True):
+        assert smoke is False, "fault injection must not be smoke-tested (it would refuse an unhealthy faulty build)"
         calls.append(("deploy_faulty", run_id))
         state["image"] = "order-service:faulty"
         return {"new_image": "order-service:faulty", "previous_image": "order-service:baseline",
