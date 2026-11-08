@@ -444,3 +444,33 @@ def test_rate_limit_waits_with_retry_after_and_is_recorded(monkeypatch):
     other.status_code = 404
     assert providers._rate_limit_wait(requests.HTTPError(response=other), 1) is None
     assert providers._rate_limit_wait(requests.ConnectionError("x"), 1) is None
+
+
+# --------------------------------------------------------------------------- normalizer v2: '@@' without ranges
+
+SRC_PATH = "app/src/main/java/X.java"
+SRC = "class X {\n    int a = 1;\n    int b = 2;\n    int c = 3;\n    int d = 4;\n}\n"
+
+
+def test_rangeless_hunk_with_context_gets_correct_ranges():
+    diff = f"--- a/{SRC_PATH}\n+++ b/{SRC_PATH}\n@@\n-    int b = 2;\n+    int b = 20;\n     int c = 3;\n"
+    fixed, rules = providers.normalize_diff(diff, {SRC_PATH}, {SRC_PATH: SRC})
+    assert "compute_hunk_ranges" in rules and providers.validate_diff_structure(fixed) == []
+    assert "@@ -1,4 +1,4 @@" in fixed                      # 2 lines of added leading context + block of 2
+    assert "+    int b = 20;" in fixed and "-    int b = 2;" in fixed   # content untouched
+
+
+def test_zero_context_hunk_gets_real_source_context_and_markers_are_dropped():
+    diff = f"--- a/{SRC_PATH}\n+++ b/{SRC_PATH}\n@@\n-    int c = 3;\n+    int c = 30;\n*** End of File"
+    fixed, rules = providers.normalize_diff(diff, {SRC_PATH}, {SRC_PATH: SRC})
+    assert rules == ["drop_patch_markers", "trailing_newline", "compute_hunk_ranges"]
+    assert "*** End of File" not in fixed and providers.validate_diff_structure(fixed) == []
+    assert "     int b = 2;" in fixed and "     int d = 4;" in fixed   # context taken from the real source
+
+
+def test_rangeless_hunk_is_left_invalid_when_it_cannot_be_placed_uniquely():
+    dup = "x;\nx;\n"
+    diff = f"--- a/{SRC_PATH}\n+++ b/{SRC_PATH}\n@@\n-x;\n+y;\n"
+    for sources in ({SRC_PATH: dup}, {}, {SRC_PATH: "nothing matches\n"}):
+        fixed, rules = providers.normalize_diff(diff, {SRC_PATH}, sources)
+        assert "compute_hunk_ranges" not in rules and providers.validate_diff_structure(fixed) != []

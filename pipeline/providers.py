@@ -66,7 +66,8 @@ MAX_RETRIES = 2                      # retries after the first attempt
 HTTP_TIMEOUT_S = 180
 FORBIDDEN_PARTS = ("hidden_tests", "labels.json")
 CACHE_KEY_VERSION = 2                # 1 = original scheme, without a version in the key material
-NORMALIZER_VERSION = 1               # bump whenever the normalize_diff() rules change
+CONTEXT = 3                          # context lines compute_hunk_ranges adds where a hunk has none
+NORMALIZER_VERSION = 2               # bump whenever the normalize_diff() rules change
 
 
 class ProviderError(RuntimeError):
@@ -252,16 +253,85 @@ def validate_diff_structure(diff: str) -> list[str]:
     return problems
 
 
-def normalize_diff(diff: str, target_files: set[str]) -> tuple[str, list[str]]:
+def _locate_block(block: list[str], source_lines: list[str]) -> int | None:
+    """0-based start of the ONE place `block` occurs in source_lines (exact, else ignoring trailing spaces)."""
+    if not block:
+        return None
+    for norm in (lambda s: s, lambda s: s.rstrip()):
+        b = [norm(x) for x in block]
+        src = [norm(x) for x in source_lines]
+        hits = [i for i in range(len(src) - len(b) + 1) if src[i:i + len(b)] == b]
+        if len(hits) == 1:
+            return hits[0]
+        if len(hits) > 1:
+            return None                      # ambiguous: never guess
+    return None
+
+
+def _compute_hunk_ranges(text: str, sources: dict[str, str]) -> str | None:
+    """Fill in missing @@ line ranges by locating each hunk's old lines (context + removed) in the ONE source file
+    named by the diff's ---/+++ header. Returns the rewritten diff, or None if any hunk cannot be placed uniquely."""
+    lines = text.split("\n")
+    trailing = lines[-1] == ""
+    if trailing:
+        lines.pop()
+    paths = [ln[6:] if ln.startswith("+++ b/") else ln[4:] for ln in lines if ln.startswith("+++ ")]
+    if len(set(paths)) != 1 or paths[0] not in sources:
+        return None
+    source_lines = sources[paths[0]].replace("\r\n", "\n").split("\n")
+    out, i, offset = [], 0, 0
+    while i < len(lines):
+        if not lines[i].startswith("@@"):
+            out.append(lines[i])
+            i += 1
+            continue
+        header = lines[i]
+        i += 1
+        body = []
+        while i < len(lines) and not lines[i].startswith("@@") and not lines[i].startswith("--- "):
+            body.append(lines[i])
+            i += 1
+        if HUNK_RE.match(header):
+            out += [header] + body
+            continue
+        old = [ln[1:] if ln[:1] in (" ", "-") else "" for ln in body if ln[:1] in (" ", "-", "")]
+        new_count = sum(1 for ln in body if ln[:1] in (" ", "+", ""))
+        start = _locate_block(old, source_lines)
+        if start is None:
+            return None
+        # git apply refuses hunks without surrounding context; add up to CONTEXT real source lines on a side
+        # that has none, so git can still verify the placement (the changed lines are untouched).
+        before, after = [], []
+        if not body or body[0][:1] not in (" ", ""):
+            before = [" " + ln for ln in source_lines[max(0, start - CONTEXT):start]]
+        if not body or body[-1][:1] not in (" ", ""):
+            end = start + len(old)
+            after = [" " + ln for ln in source_lines[end:end + CONTEXT]]
+        start -= len(before)
+        body = before + body + after
+        old_n, new_n = len(old) + len(before) + len(after), new_count + len(before) + len(after)
+        out.append(f"@@ -{start + 1},{old_n} +{start + 1 + offset},{new_n} @@")
+        out += body
+        offset += new_n - old_n
+    return "\n".join(out) + ("\n" if trailing else "")
+
+
+def normalize_diff(diff: str, target_files: set[str], sources: dict[str, str] | None = None) -> tuple[str, list[str]]:
     """Deterministic rewrite of a structurally invalid diff (NORMALIZER_VERSION). Returns (text, rules fired).
 
-    Rules, in order: crlf_to_lf; trailing_newline; add_file_headers (only when there are @@ hunks, no
-    `--- `, `+++ ` or `diff --git` line at all, and exactly one target file). The caller re-validates the
-    result and keeps the raw diff if it is still invalid."""
+    Rules, in order: crlf_to_lf; drop_patch_markers (lines starting with '*** ', e.g. '*** End of File', from the
+    apply_patch style); trailing_newline; add_file_headers (only when there are @@ hunks, no `--- `, `+++ ` or
+    `diff --git` line at all, and exactly one target file); compute_hunk_ranges (an '@@' with no line numbers: the
+    hunk's old lines are located in the source file the model was shown and must match exactly once). Content
+    lines are never changed. The caller re-validates the result and keeps the raw diff if it is still invalid."""
     text, rules = diff, []
     if "\r" in text:
         text = text.replace("\r\n", "\n").replace("\r", "\n")
         rules.append("crlf_to_lf")
+    kept = [ln for ln in text.split("\n") if not ln.startswith("*** ")]
+    if len(kept) != len(text.split("\n")):
+        text = "\n".join(kept)
+        rules.append("drop_patch_markers")
     if text.strip() and not text.endswith("\n"):
         text += "\n"
         rules.append("trailing_newline")
@@ -272,10 +342,15 @@ def normalize_diff(diff: str, target_files: set[str]) -> tuple[str, list[str]]:
         target = next(iter(target_files)).replace("\\", "/")
         text = f"--- a/{target}\n+++ b/{target}\n" + text.lstrip("\n")
         rules.append("add_file_headers")
+    if sources and any(ln.startswith("@@") and not HUNK_RE.match(ln) for ln in text.split("\n")):
+        fixed = _compute_hunk_ranges(text, sources)
+        if fixed is not None:
+            text = fixed
+            rules.append("compute_hunk_ranges")
     return text, rules
 
 
-def apply_format_check(patch: Patch, target_files: set[str]) -> Patch:
+def apply_format_check(patch: Patch, target_files: set[str], sources: dict[str, str] | None = None) -> Patch:
     """Set the format/sha/normalizer fields of an LLM patch. .diff changes only when normalization yields a
     structurally valid diff; otherwise the drafted text is left exactly as it was."""
     raw = patch.diff
@@ -285,7 +360,7 @@ def apply_format_check(patch: Patch, target_files: set[str]) -> Patch:
         patch.format_status = "raw_valid"
     else:
         patch.normalizer_version = NORMALIZER_VERSION
-        fixed, rules = normalize_diff(raw, target_files)
+        fixed, rules = normalize_diff(raw, target_files, sources)
         if rules and not validate_diff_structure(fixed):
             patch.format_status, patch.diff, patch.raw_diff = "normalized", fixed, raw
             patch.normalizer_rules = rules
@@ -734,7 +809,7 @@ class LLMProvider:
             patch = apply_format_check(
                 Patch(candidate_id=f"{fault_id}-{self.mode}-{i}", diff=p["diff"], explanation=p["explanation"],
                       provider_mode=self.mode, model=self.model, attempts=attempts, raw_output_sha256=raw_sha),
-                targets)
+                targets, source_files)
             if patch.format_status != "raw_valid":
                 log.info("patch %s format %s (%s; rules %s)", patch.candidate_id, patch.format_status,
                          "; ".join(patch.format_problems), patch.normalizer_rules)
