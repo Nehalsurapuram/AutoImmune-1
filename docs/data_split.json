@@ -1,0 +1,7 @@
+{
+  "protocol": "docs/protocol_v1.md",
+  "frozen": "2026-11-09",
+  "development_faults": ["F01", "F04", "F06"],
+  "held_out_test_faults": [],
+  "note": "All three faults were used to design gates, thresholds and the oracle. No held-out faults exist yet, so every reported rate is a development-set (pilot) result. Split is by fault, never by candidate."
+}

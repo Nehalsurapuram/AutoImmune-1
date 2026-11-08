@@ -181,7 +181,8 @@ def test_output_is_reproducible_byte_for_byte(world, capsys):
     assert {p.name: p.read_bytes() for p in sorted(out.iterdir())} == first
     assert set(first) == {"units.csv", "decisions_by_fault.csv", "first_stop.csv", "unsafe_first_stop.csv",
                           "policies.csv", "deployments.csv", "rollbacks.csv", "approvals.csv", "llm_units.csv",
-                          "llm_patch_utility.csv", "llm_diagnosis.csv", "runs.csv", "pilot_report.md"}
+                          "llm_patch_utility.csv", "llm_diagnosis.csv", "runs.csv", "gate_incremental.csv",
+                          "intervals.csv", "pilot_report.md"}
 
 
 def test_check_mode_detects_stale_results_and_writes_nothing(world, capsys):
@@ -232,3 +233,35 @@ def test_slow_kind_rollback_is_staged_even_without_labels(tmp_path):
     files, report = analyse.analyse(ev, tmp_path / "faults")
     assert files["rollbacks.csv"].splitlines()[1].startswith("staged,")
     assert "Real (unplanned) rollbacks: **0**" in report
+
+
+def test_gate_incremental_counts_catches_per_gate(world):
+    """world: regressive stops at V2, ineffective at V1; overfitting and slow pass every gate."""
+    tmp, ev, ids = world
+    files, report = analyse.analyse(ev, tmp / "faults")
+    rows = {r["through_gate"]: r for r in table(files, "gate_incremental.csv") if r["cohort"] == "scripted"}
+    assert rows["V0"]["unsafe_stopped_cum"] == "0"
+    assert (rows["V0-V1"]["unsafe_stopped_cum"], rows["V0-V1"]["unsafe_stopped_marginal"]) == ("1", "1")
+    assert (rows["V0-V2"]["unsafe_stopped_cum"], rows["V0-V3"]["unsafe_remaining"]) == ("2", "2")
+    assert rows["V0-V3"]["safe_rejected_cum"] == "0"
+    assert "## g) Incremental gate catch" in report and "## h) Uncertainty by fault" in report
+
+
+def test_bootstrap_is_deterministic_and_resamples_faults(world):
+    tmp, ev, ids = world
+    f1, _ = analyse.analyse(ev, tmp / "faults")
+    f2, _ = analyse.analyse(ev, tmp / "faults")
+    assert f1["intervals.csv"] == f2["intervals.csv"]
+    b3 = next(r for r in table(f1, "intervals.csv") if (r["cohort"], r["policy"]) == ("scripted", "B3"))
+    assert b3["fault_clusters"] == "1" and b3["estimate"] == "0.6667"   # one fault: the interval collapses
+
+
+def test_llm_units_take_labels_from_the_oracle_report(world):
+    tmp, ev, ids = world
+    append(ev, [row("F99", "F99-live-1", run="lv", ts="2026-10-19T16:00:00+00:00", diag_mode="live",
+                    patch_mode="live", model="m", gates=("pass", "fail", "not_run", "not_run"), decision="REJECT")])
+    (ev.parent / "oracle_report.jsonl").write_text(json.dumps({
+        "fault_id": "F99", "label": "correct", "occurrences": [{"run_id": "lv", "candidate_id": "F99-live-1"}]}) + chr(10))
+    files, report = analyse.analyse(ev, tmp / "faults")
+    assert pol(files, "llm", "B3", "frr_safe_rejected") == (1, 1)     # a correct live patch the gates rejected
+    assert "independent oracle" in report

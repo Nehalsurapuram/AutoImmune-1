@@ -246,3 +246,92 @@ def test_deploy_module_never_runs_git():
     tree = ast.parse(Path(deploy.__file__).read_text(encoding="utf-8"))
     strings = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
     assert "git" not in strings and not any(s.startswith("git ") for s in strings)
+
+
+# ------------------------------------------------------------------ S3: smoke test, image identity, window p95
+
+def prom(count_fast, count_slow):
+    """Prometheus text: count_fast requests under 0.1 s and count_slow requests between 2.5 and 5 s."""
+    total = count_fast + count_slow
+    lines = []
+    for le, c in (("0.1", count_fast), ("2.5", count_fast), ("5.0", total), ("+Inf", total)):
+        lines.append(f'http_server_requests_seconds_bucket{{uri="/api/orders",status="200",le="{le}"}} {c}')
+    lines.append(f'http_server_requests_seconds_count{{uri="/api/orders",status="200"}} {total}')
+    return "\n".join(lines) + "\n"
+
+
+def http_with_metrics(snapshots):
+    """HEALTHY routes plus /actuator/prometheus returning the given texts in order (last one repeats)."""
+    state = {"i": 0}
+
+    def get(url, timeout=None):
+        path = url.split("18080", 1)[1]
+        if path == "/actuator/prometheus":
+            text = snapshots[min(state["i"], len(snapshots) - 1)]
+            state["i"] += 1
+            return Resp(200, text)
+        return Resp(*HEALTHY[path])
+    return get
+
+
+METRICS_CFG = {**CFG, "metrics": {"min_requests": 20}}
+
+
+def test_window_p95_over_limit_is_a_breach():
+    # base: nothing yet; then 10 fast + 30 slow requests -> p95 lands in the 2.5-5 s bucket
+    res = window(http_with_metrics([prom(0, 0), prom(10, 30)]), cfg=METRICS_CFG)
+    assert res["passed"] is False
+    assert any("window p95" in b for b in res["breach"]["breaches"])
+
+
+def test_window_p95_under_limit_passes_and_is_recorded():
+    res = window(http_with_metrics([prom(0, 0), prom(40, 0)]), cfg=METRICS_CFG)
+    assert res["passed"] is True and res["checks"][-1]["window_p95"]["requests"] == 40
+
+
+def test_window_p95_with_too_few_requests_is_not_judged():
+    res = window(http_with_metrics([prom(0, 0), prom(0, 5)]), cfg=METRICS_CFG)
+    assert res["passed"] is True                      # 5 slow requests < min_requests: no verdict from metrics
+
+
+def test_missing_metrics_are_neither_pass_nor_breach():
+    res = window(fake_http({**HEALTHY, "/actuator/prometheus": (503, "down")}), cfg=METRICS_CFG)
+    assert res["passed"] is True and "window_p95" not in res["checks"][0]   # no baseline snapshot: p95 not used
+
+
+def test_failed_smoke_test_means_no_cutover(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(deploy, "current_image", lambda: "order-service:baseline")
+    monkeypatch.setattr(deploy, "build_image", lambda src, tag: 1.0)
+    monkeypatch.setattr(deploy, "image_id", lambda tag: f"sha256:{tag[-4:]}")
+    monkeypatch.setattr(deploy, "smoke_test", lambda tag, cfg: {"passed": False, "reason": "candidate not healthy"})
+    monkeypatch.setattr(deploy, "_run_app", lambda tag, cfg: calls.append(("run", tag)))
+    monkeypatch.setattr(deploy, "_stop_app", lambda: calls.append(("stop",)))
+    res = deploy.release(AUTO, tmp_path, "r", run_dir=tmp_path, cfg=CFG)
+    assert calls == []                                 # the live app was never touched
+    assert res["deployed"] is False and res["outcome"] == "smoke_failed" and res["rolled_back"] is None
+    rec = json.loads((tmp_path / "deploy.json").read_text(encoding="utf-8"))
+    assert rec["outcome"] == "smoke_failed" and rec["cutover"] is False and rec["new_image_id"]
+
+
+def test_smoke_test_uses_a_separate_container_and_port_and_always_cleans_up(monkeypatch):
+    seen = []
+    monkeypatch.setattr(deploy, "_docker", lambda args, timeout=120: seen.append(args) or
+                        type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})())
+    monkeypatch.setattr(deploy, "wait_until", lambda cfg, healthy, timeout=0: (_ for _ in ()).throw(
+        deploy.DeployError("not healthy")))
+    monkeypatch.setattr(deploy, "_health", lambda cfg, *a, **k: {"ok": False, "http": 503})
+    res = deploy.smoke_test("order-service:x", CFG)
+    run = next(a for a in seen if a[0] == "run")
+    assert deploy.CANDIDATE_CONTAINER in run and "18081:8080" in run and deploy.APP_CONTAINER not in run
+    assert seen[-1] == ["rm", "-f", deploy.CANDIDATE_CONTAINER] and res["passed"] is False
+
+
+def test_rollback_is_verified_by_image_id(monkeypatch):
+    monkeypatch.setattr(deploy, "rollback", lambda *a, **k: {"restored_image": "order-service:baseline"})
+    monkeypatch.setattr(deploy, "running_image_id", lambda container=deploy.APP_CONTAINER: "sha256:aaa")
+    ok = deploy.rollback_verified("order-service:baseline", "order-service:new", {}, 0.0, CFG, "sha256:aaa")
+    bad = deploy.rollback_verified("order-service:baseline", "order-service:new", {}, 0.0, CFG, "sha256:bbb")
+    none = deploy.rollback_verified("order-service:baseline", "order-service:new", {}, 0.0, CFG, None)
+    assert (ok["restored_image_verified"], bad["restored_image_verified"], none["restored_image_verified"]) == \
+        (True, False, None)

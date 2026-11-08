@@ -1,0 +1,3 @@
+fault_id,candidate,oracle_label,reviewer_1,reviewer_1_label,reviewer_2,reviewer_2_label,final_label,notes
+# Two team members fill this in WITHOUT looking at policy decisions (results/policies.csv, decisions in evidence.jsonl).
+# One row per candidate in results/oracle_report.jsonl. Disagreements are discussed and the outcome noted. Status: PENDING.

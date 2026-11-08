@@ -2,14 +2,18 @@
 
     start_baseline()                       build app/ as order-service:baseline and run it as autoimmune-app
     record_probes()                        write config/probes.yaml with expected values from the running (healthy) app
-    deploy(patched_source_dir, run_id)     build order-service:<run_id>, swap the running container, wait until it answers
+    deploy(patched_source_dir, run_id)     build order-service:<run_id>; SMOKE-TEST it side by side on candidate_port
+                                           (must boot and report health UP) before any cutover; then swap the running
+                                           container and wait until it answers. Image IDs (digests) are recorded.
     health_window()                        every check_interval_s for health_window_s: /actuator/health UP,
-                                           each probe returns its expected value in under latency_limit_ms
+                                           each probe returns its expected value in under latency_limit_ms, and the
+                                           window p95 from the Prometheus histogram stays under latency_limit_ms
     release(decision, src, run_id, ...)    approval gate + deploy + health window + promote (deploy.json)
                                            or roll back (rollback.json)
     approve_cli(decision, diff)            human approve / reject for ESCALATE candidates
 
-Rollback swaps the container back to the previous image tag. This module never runs git.
+Rollback swaps the container back to the previous image and verifies by image ID that it is the one running.
+This is local simulated traffic on one laptop, not a production canary. This module never runs git.
 A REJECT never reaches deploy; an ESCALATE needs an "approve" record first. Rollback (after a deploy)
 and reject (before any deploy) are separate events, recorded by different modules.
 """
@@ -26,10 +30,12 @@ from pathlib import Path
 import requests
 import yaml
 
+from pipeline import detector, observe
 from pipeline.observe import HEALTH_TIMEOUT_S, request_timeout_s, same_value, suspension
 
 REPO = Path(__file__).resolve().parents[1]
 APP_CONTAINER = "autoimmune-app"
+CANDIDATE_CONTAINER = "autoimmune-candidate"
 BASELINE_TAG = "order-service:baseline"
 STARTUP_TIMEOUT_S = 120
 BUILD_TIMEOUT_S = 900
@@ -70,6 +76,44 @@ def image_tag(run_id: str) -> str:
 def current_image() -> str | None:
     r = _docker(["inspect", "--format", "{{.Config.Image}}", APP_CONTAINER])
     return r.stdout.strip() if r.returncode == 0 else None
+
+
+def image_id(tag: str) -> str | None:
+    """Content-addressed image ID (sha256:...) of a local tag; None if unknown."""
+    r = _docker(["image", "inspect", "--format", "{{.Id}}", tag])
+    return (r.stdout.strip() or None) if r.returncode == 0 else None
+
+
+def running_image_id(container: str = APP_CONTAINER) -> str | None:
+    r = _docker(["inspect", "--format", "{{.Image}}", container])
+    return (r.stdout.strip() or None) if r.returncode == 0 else None
+
+
+def candidate_cfg(cfg: dict) -> dict:
+    return {**cfg, "host_port": cfg.get("candidate_port", cfg["host_port"] + 1)}
+
+
+def smoke_test(tag: str, cfg: dict, timeout: float = STARTUP_TIMEOUT_S) -> dict:
+    """Run the candidate image NEXT TO the live app (own container, own port) and require /actuator/health UP before
+    any cutover. Latency and probe values are the health window's job, after cutover. The candidate container is always
+    removed afterwards; the live app is never touched."""
+    ccfg = candidate_cfg(cfg)
+    _docker(["rm", "-f", CANDIDATE_CONTAINER])
+    start = time.monotonic()
+    r = _docker(["run", "-d", "--name", CANDIDATE_CONTAINER, "-p", f"{ccfg['host_port']}:{cfg['app_port']}",
+                 "--memory", "1g", "--cpus", "1", tag])
+    try:
+        if r.returncode != 0:
+            return {"passed": False, "port": ccfg["host_port"], "seconds": 0.0,
+                    "reason": f"candidate container did not start: {r.stderr.strip()[:300]}"}
+        try:
+            secs = wait_until(ccfg, healthy=True, timeout=timeout)
+            return {"passed": True, "port": ccfg["host_port"], "seconds": round(secs, 1), "health": _health(ccfg)}
+        except DeployError:
+            return {"passed": False, "port": ccfg["host_port"], "seconds": round(time.monotonic() - start, 1),
+                    "health": _health(ccfg), "reason": f"candidate not healthy within {timeout:.0f}s"}
+    finally:
+        _docker(["rm", "-f", CANDIDATE_CONTAINER])
 
 
 def build_image(source_dir: Path, tag: str) -> float:
@@ -161,9 +205,20 @@ def health_window(cfg: dict | None = None, probes: list[dict] | None = None, *, 
     start = clock()
     checks = []
     k, prev_end = 0, None
+    base = observe.scrape(cfg, http_get, clock) if "metrics" in cfg else None
+    base_snap = base.get("snapshot") if base else None
     while True:
         begin = clock()
         c = check_once(cfg, probes, http_get, clock)
+        if base_snap is not None:
+            wp = _window_p95(cfg, base_snap, clock() - start, http_get, clock)
+            c["window_p95"] = wp
+            over = (wp.get("p95_ms") is not None and wp["requests"] >= cfg["metrics"].get("min_requests", 20)
+                    and wp["p95_ms"] > cfg["latency_limit_ms"])
+            if over:
+                c["ok"] = False
+                c["breaches"].append(f"window p95 {wp['p95_ms']:.0f} ms over {wp['requests']} requests, "
+                                     f"limit {cfg['latency_limit_ms']} ms")
         prev_end, gap = clock(), None if prev_end is None else begin - prev_end
         c["t_s"] = round(prev_end - start, 1)
         checks.append(c)
@@ -176,6 +231,18 @@ def health_window(cfg: dict | None = None, probes: list[dict] | None = None, *, 
         if k * interval > window:
             return {"passed": True, "checks": checks, "breach": None, "breach_clock": None}
         sleep(max(0.0, start + k * interval - clock()))
+
+
+def _window_p95(cfg: dict, base_snap: dict, seconds: float, http_get, clock) -> dict:
+    """p95 latency since the window started, from the http.server.requests histogram (actuator traffic excluded).
+    Unavailable metrics are recorded as such and are neither a pass nor a breach on their own."""
+    now = observe.scrape(cfg, http_get, clock)
+    if not now.get("snapshot"):
+        return {"p95_ms": None, "requests": 0, "note": f"metrics unavailable: {now.get('error')}"}
+    stats = detector.window_stats(base_snap, now["snapshot"], seconds)
+    if stats is None:
+        return {"p95_ms": None, "requests": 0, "note": "counters went backwards (restart)"}
+    return {"p95_ms": stats["p95_ms"], "requests": stats["requests"]}
 
 
 # --------------------------------------------------------------------------- baseline and probes
@@ -227,6 +294,12 @@ def deploy(patched_source_dir: Path, run_id: str, cfg: dict | None = None) -> di
         raise DeployError(f"no running {APP_CONTAINER} to replace; call start_baseline() first")
     tag = image_tag(run_id)
     build_s = build_image(Path(patched_source_dir), tag)   # a failed build leaves the running app untouched
+    ids = {"previous_image_id": image_id(previous), "new_image_id": image_id(tag)}
+    smoke = smoke_test(tag, cfg)
+    if not smoke["passed"]:                                # no cutover: the live app keeps serving
+        return {"run_id": run_id, "new_image": tag, "previous_image": previous, "build_s": round(build_s, 1),
+                "smoke": smoke, **ids, "cutover": False, "answered": False, "swap_to_answer_s": None,
+                "swap_started_at": None, "swap_clock": None}
     start = time.monotonic()
     _run_app(tag, cfg)
     try:
@@ -234,8 +307,13 @@ def deploy(patched_source_dir: Path, run_id: str, cfg: dict | None = None) -> di
     except DeployError:
         answer_s, answered = None, False
     return {"run_id": run_id, "new_image": tag, "previous_image": previous, "build_s": round(build_s, 1),
-            "swap_to_answer_s": answer_s, "answered": answered, "swap_started_at": _now(),
-            "swap_clock": start}
+            "smoke": smoke, **ids, "cutover": True, "swap_to_answer_s": answer_s, "answered": answered,
+            "swap_started_at": _now(), "swap_clock": start}
+
+
+def verify_running(expected_id: str | None) -> bool | None:
+    """True/False: the running container is/isn't the expected image; None: no expected ID to check against."""
+    return None if not expected_id else running_image_id() == expected_id
 
 
 def rollback(previous_image: str, failed_image: str, breach: dict, breach_clock: float, cfg: dict) -> dict:
@@ -245,6 +323,13 @@ def rollback(previous_image: str, failed_image: str, breach: dict, breach_clock:
     return {"event": "rollback", "at": _now(), "reason": "; ".join(breach.get("breaches", [])) or "unknown",
             "failed_check": breach, "rolled_back_image": failed_image, "restored_image": previous_image,
             "seconds_breach_to_healthy": round(time.monotonic() - breach_clock, 1), "healthy_after": True}
+
+
+def rollback_verified(previous_image: str, failed_image: str, breach: dict, breach_clock: float, cfg: dict,
+                      previous_image_id: str | None) -> dict:
+    rb = rollback(previous_image, failed_image, breach, breach_clock, cfg)
+    rb.update(restored_image_id=previous_image_id, restored_image_verified=verify_running(previous_image_id))
+    return rb
 
 
 def switch_to(tag: str, cfg: dict, healthy: bool = True) -> float:
@@ -280,6 +365,13 @@ def release(decision, patched_source_dir: Path, run_id: str, *, approval: dict |
                 "rolled_back": None, "reason": why, "recovery_s": None}
 
     dep = deploy(patched_source_dir, run_id, cfg)
+    if dep.get("cutover") is False:
+        record = {**{k: v for k, v in dep.items() if k != "swap_clock"}, "authorised_by": why,
+                  "decision": _decision_dict(decision), "approval": approval, "outcome": "smoke_failed",
+                  "finished_at": _now()}
+        (run_dir / "deploy.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+        return {"deployed": False, "awaiting_review": False, "rolled_back": None, "outcome": "smoke_failed",
+                "reason": f"smoke test failed before cutover: {dep['smoke'].get('reason')}", "recovery_s": None}
     if dep["answered"]:
         window = health_window(cfg)
     else:
@@ -303,12 +395,14 @@ def release(decision, patched_source_dir: Path, run_id: str, *, approval: dict |
         return {"deployed": True, "awaiting_review": False, "rolled_back": None, "outcome": "invalid: observer_suspended",
                 "image": dep["previous_image"], "checks": len(window["checks"]), "recovery_s": None}
     if window["passed"]:
-        record.update(outcome="promoted", promoted_image=dep["new_image"], finished_at=_now())
+        record.update(outcome="promoted", promoted_image=dep["new_image"], finished_at=_now(),
+                      promoted_image_verified=verify_running(dep.get("new_image_id")))
         (run_dir / "deploy.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
         return {"deployed": True, "awaiting_review": False, "rolled_back": False, "outcome": "promoted",
                 "image": dep["new_image"], "checks": len(window["checks"]), "recovery_s": None}
 
-    rb = rollback(dep["previous_image"], dep["new_image"], window["breach"], window["breach_clock"], cfg)
+    rb = rollback_verified(dep["previous_image"], dep["new_image"], window["breach"], window["breach_clock"], cfg,
+                           dep.get("previous_image_id"))
     record.update(outcome="rolled_back", finished_at=_now())
     (run_dir / "deploy.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
     (run_dir / "rollback.json").write_text(json.dumps(rb, indent=2), encoding="utf-8")

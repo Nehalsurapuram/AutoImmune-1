@@ -37,13 +37,15 @@ import hashlib
 import io
 import json
 import math
+import random
 import shutil
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent
-UNSAFE = ("overfitting", "regressive", "insecure", "slow", "ineffective")
+UNSAFE = ("overfitting", "regressive", "insecure", "slow", "ineffective", "incorrect")  # incorrect: oracle-v1
+NOT_APPLICABLE = ("invalid", "unknown")   # oracle: does not apply/compile, or oracle error: neither safe nor unsafe
 SAFE = ("correct",)
 GATES = ("V0", "V1", "V2", "V3")
 DECISIONS = ("AUTO_APPLY", "ESCALATE", "REJECT")
@@ -74,6 +76,18 @@ def load_labels(faults_dir: Path) -> dict[str, dict]:
                                                     "staged": bool(entry.get("staged", False)),
                                                     "status": entry.get("status", "")}
     return labels
+
+
+def load_oracle_live(path: Path) -> dict[tuple, str]:
+    """(run_id, candidate_id) -> oracle label for live/replay patches (tools/oracle.py). Empty if no report."""
+    out = {}
+    if path and path.is_file():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                r = json.loads(line)
+                for o in r.get("occurrences", []):
+                    out[(o["run_id"], o["candidate_id"])] = r["label"]
+    return out
 
 
 def wilson(k: int, n: int, z: float = Z95) -> tuple[float | None, float | None]:
@@ -246,7 +260,12 @@ def analyse(evidence: Path, faults_dir: Path, runs_dir: Path | None = None) -> t
     valid = [r for r in rows if not r.get("invalid")]
     units = units_of(rows)
     by_cohort = {c: [u for u in units if u["_cohort"] == c] for c in COHORTS}
-    lab = lambda u: labels[u["candidate_id"]]["label"] if u["_cohort"] == "scripted" and u["candidate_id"] in labels else ""  # noqa: E731
+    oracle_live = load_oracle_live(evidence.parent / "oracle_report.jsonl")
+
+    def lab(u: dict) -> str:
+        if u["_cohort"] == "scripted":
+            return labels[u["candidate_id"]]["label"] if u["candidate_id"] in labels else ""
+        return oracle_live.get((u["run_id"], u["candidate_id"]), "")
     rolled_back_keys = {unit_key(r) for r in valid if r.get("deployed") and r.get("rolled_back")}
     faults = sorted({u["fault_id"] for u in units})
     files: dict[str, str] = {}
@@ -294,7 +313,7 @@ def analyse(evidence: Path, faults_dir: Path, runs_dir: Path | None = None) -> t
         unsafe = [u for u in labelled if lab(u) in UNSAFE]
         safe_app = [u for u in labelled if lab(u) in SAFE and status(u, "V0") == "pass"]
         for code, desc, fn in POLICIES:
-            auto_lab = [u for u in labelled if fn(u) == "AUTO_APPLY"]
+            auto_lab = [u for u in labelled if lab(u) not in NOT_APPLICABLE and fn(u) == "AUTO_APPLY"]
             metrics = [
                 ("auto_applied", sum(fn(u) == "AUTO_APPLY" for u in us), len(us)),
                 ("hir_escalated", sum(fn(u) == "ESCALATE" for u in us), len(us)),
@@ -309,6 +328,62 @@ def analyse(evidence: Path, faults_dir: Path, runs_dir: Path | None = None) -> t
             c_md[c].append([f"**{code}**", desc, *[fmt_rate(k, n) for _, k, n in metrics]])
     files["policies.csv"] = csv_text(["cohort", "policy", "description", "metric", "k", "n", "rate",
                                       "wilson95_low", "wilson95_high"], c_rows)
+
+    # g) incremental gate catch vs time (roadmap S5 / RQ3), labelled units only
+    gi_rows = []
+    for c in COHORTS:
+        labelled = [u for u in by_cohort[c] if lab(u)]
+        unsafe = [u for u in labelled if lab(u) in UNSAFE]
+        safe_app = [u for u in labelled if lab(u) in SAFE and status(u, "V0") == "pass"]
+        prev = 0
+        for k, g in enumerate(GATES):
+            upto = GATES[:k + 1]
+            stopped = [u for u in unsafe if any(status(u, x) != "pass" for x in upto)]
+            by_error = [u for u in stopped if any(status(u, x) in ("error", "timeout") for x in upto)]
+            secs = [sum(u[x.lower()]["seconds"] for x in upto) for u in labelled]
+            gi_rows.append([c, f"V0-{g}" if k else "V0", len(unsafe), len(stopped), len(stopped) - prev,
+                            len(unsafe) - len(stopped), len(by_error), len(safe_app),
+                            sum(any(status(u, x) != "pass" for x in upto) for u in safe_app),
+                            round(sum(secs), 1), round(sorted(secs)[len(secs) // 2], 1) if secs else ""])
+            prev = len(stopped)
+    files["gate_incremental.csv"] = csv_text(
+        ["cohort", "through_gate", "unsafe_n", "unsafe_stopped_cum", "unsafe_stopped_marginal", "unsafe_remaining",
+         "stopped_by_tool_error_cum", "safe_applicable_n", "safe_rejected_cum", "gate_seconds_total",
+         "gate_seconds_median_per_unit"], gi_rows)
+
+    # h) fault-cluster bootstrap (roadmap S5): resample FAULTS, not candidates
+    iv_rows = []
+    rng = random.Random(20261109)
+    B = 2000
+
+    def udr(us, fn):
+        auto = [u for u in us if lab(u) and lab(u) not in NOT_APPLICABLE and fn(u) == "AUTO_APPLY"]
+        return (sum(lab(u) in UNSAFE for u in auto) / len(auto)) if auto else None
+
+    for c in COHORTS:
+        lab_units = [u for u in by_cohort[c] if lab(u)]
+        clusters = sorted({u["fault_id"] for u in lab_units})
+        by_f = {f: [u for u in lab_units if u["fault_id"] == f] for f in clusters}
+        stats = {code: [] for code, _, _ in POLICIES[1:]}
+        diffs = []
+        for _ in range(B if clusters else 0):
+            sample = [u for f in (rng.choice(clusters) for _ in clusters) for u in by_f[f]]
+            vals = {code: udr(sample, fn) for code, _, fn in POLICIES[1:]}
+            for code, v in vals.items():
+                if v is not None:
+                    stats[code].append(v)
+            if vals["B1"] is not None and vals["B3"] is not None:
+                diffs.append(vals["B1"] - vals["B3"])
+        pct = lambda xs, q: sorted(xs)[min(len(xs) - 1, int(q * len(xs)))] if xs else None  # noqa: E731
+        for code, _, fn in POLICIES[1:]:
+            est = udr(lab_units, fn)
+            iv_rows.append([c, "udr_unsafe_of_auto", code, r4(est), r4(pct(stats[code], 0.025)),
+                            r4(pct(stats[code], 0.975)), len(clusters), len(stats[code])])
+        e1, e3 = udr(lab_units, POLICIES[1][2]), udr(lab_units, POLICIES[3][2])
+        iv_rows.append([c, "udr_difference", "B1-B3", r4(e1 - e3 if e1 is not None and e3 is not None else None),
+                        r4(pct(diffs, 0.025)), r4(pct(diffs, 0.975)), len(clusters), len(diffs)])
+    files["intervals.csv"] = csv_text(["cohort", "metric", "policy", "estimate", "boot95_low", "boot95_high",
+                                       "fault_clusters", "valid_resamples"], iv_rows)
 
     # d) deployments and rollbacks (every valid deployed row)
     dep_rows, rb_rows = [], []
@@ -394,8 +469,11 @@ def analyse(evidence: Path, faults_dir: Path, runs_dir: Path | None = None) -> t
                       "metric (UDR, unsafe escape, FRR) below is n/a. `candidate_kind` is the name a scripted "
                       "candidate was built under, not an independent label.")
     else:
-        label_line = ("> Labels: " + ", ".join(f"{n} {s!r}" for s, n in sorted(label_status.items()))
-                      + ". Joined here only; never seen by the pipeline.")
+        label_line = ("> **Labels: independent oracle** (`tools/oracle.py`: hidden behaviour and performance tests, the "
+                      "full existing suite, and a security probe distinct from gate V3, run offline on every candidate "
+                      "including rejected ones). Status: " + ", ".join(f"{n} {s!r}" for s, n in sorted(label_status.items()))
+                      + ". Joined here only; never seen by the pipeline. LLM attempts are labelled from "
+                      f"`results/oracle_report.jsonl` ({len(oracle_live)} occurrences).")
     n_s, n_l = len(by_cohort["scripted"]), len(by_cohort["llm"])
     ledger_issues = [r for r in ledger if not str(r[4]).startswith(("completed", "gates_only", "rows recorded", "healthy watch: no_incident"))]
     md = [
@@ -465,6 +543,18 @@ def analyse(evidence: Path, faults_dir: Path, runs_dir: Path | None = None) -> t
                      "AUTO_APPLY", "runs"], util_md), "",
            "### Diagnosis localisation (one diagnose() call per run)", "",
            md_table(["fault", "model", "top-1 hit", "top-3 hit", "runs evaluated"], diag_md), "",
+           "## g) Incremental gate catch and cost (labelled units)", "",
+           "Policy 'auto-apply if every gate up to here passes'. Stopped = labelled unsafe with a non-pass gate so far "
+           "(tool errors and timeouts counted separately, never as a catch of quality). Seconds = time actually spent in "
+           "those gates.", "",
+           md_table(["cohort", "through", "unsafe n", "stopped (cum)", "+ this gate", "still through", "by tool error",
+                     "safe applicable n", "safe rejected (cum)", "gate s total", "median s/unit"], gi_rows), "",
+           "## h) Uncertainty by fault (cluster bootstrap)", "",
+           f"UDR with a percentile bootstrap that resamples **faults** ({B} resamples, seed 20261109), because candidates "
+           "of one fault are not independent. With only a handful of fault clusters these intervals are illustrative, "
+           "not a safety guarantee; resamples with no auto-applied unit are dropped (count shown).", "",
+           md_table(["cohort", "metric", "policy", "estimate", "low", "high", "fault clusters", "valid resamples"],
+                    iv_rows), "",
            "## f) Run ledger", "",
            (f"{len(ledger)} run directories (pytest gate fixtures excluded); {len(ledger_issues)} did not complete. "
             "Failed runs have no evidence rows, so they are listed here instead of disappearing." if runs_dir
