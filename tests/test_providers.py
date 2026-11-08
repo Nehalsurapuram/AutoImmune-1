@@ -474,3 +474,14 @@ def test_rangeless_hunk_is_left_invalid_when_it_cannot_be_placed_uniquely():
     for sources in ({SRC_PATH: dup}, {}, {SRC_PATH: "nothing matches\n"}):
         fixed, rules = providers.normalize_diff(diff, {SRC_PATH}, sources)
         assert "compute_hunk_ranges" not in rules and providers.validate_diff_structure(fixed) != []
+
+
+def test_full_apply_patch_format_is_converted_and_end_of_file_context_is_real():
+    """gpt-oss-120b on F01: '*** Begin Patch / *** Update File: <path> / @@ / ... / *** End Patch', replacing the
+    last method of the file. Context must never include the phantom line after the final newline."""
+    diff = (f"*** Begin Patch\n*** Update File: {SRC_PATH}\n@@\n-    int d = 4;\n-}}\n+    int d = 40;\n+}}\n"
+            "*** End Patch")
+    fixed, rules = providers.normalize_diff(diff, set(), {SRC_PATH: SRC})
+    assert rules[:2] == ["apply_patch_file_headers", "drop_patch_markers"] and "compute_hunk_ranges" in rules
+    assert fixed.startswith(f"--- a/{SRC_PATH}\n+++ b/{SRC_PATH}\n") and providers.validate_diff_structure(fixed) == []
+    assert "@@ -3,4 +3,4 @@" in fixed            # lines 3-6 of a 6-line file: no line 7

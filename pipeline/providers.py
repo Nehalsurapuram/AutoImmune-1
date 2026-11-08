@@ -67,7 +67,7 @@ HTTP_TIMEOUT_S = 180
 FORBIDDEN_PARTS = ("hidden_tests", "labels.json")
 CACHE_KEY_VERSION = 2                # 1 = original scheme, without a version in the key material
 CONTEXT = 3                          # context lines compute_hunk_ranges adds where a hunk has none
-NORMALIZER_VERSION = 2               # bump whenever the normalize_diff() rules change
+NORMALIZER_VERSION = 3               # bump whenever the normalize_diff() rules change
 
 
 class ProviderError(RuntimeError):
@@ -279,6 +279,8 @@ def _compute_hunk_ranges(text: str, sources: dict[str, str]) -> str | None:
     if len(set(paths)) != 1 or paths[0] not in sources:
         return None
     source_lines = sources[paths[0]].replace("\r\n", "\n").split("\n")
+    if source_lines and source_lines[-1] == "":
+        source_lines.pop()                   # the final newline does not start another line
     out, i, offset = [], 0, 0
     while i < len(lines):
         if not lines[i].startswith("@@"):
@@ -319,8 +321,9 @@ def _compute_hunk_ranges(text: str, sources: dict[str, str]) -> str | None:
 def normalize_diff(diff: str, target_files: set[str], sources: dict[str, str] | None = None) -> tuple[str, list[str]]:
     """Deterministic rewrite of a structurally invalid diff (NORMALIZER_VERSION). Returns (text, rules fired).
 
-    Rules, in order: crlf_to_lf; drop_patch_markers (lines starting with '*** ', e.g. '*** End of File', from the
-    apply_patch style); trailing_newline; add_file_headers (only when there are @@ hunks, no `--- `, `+++ ` or
+    Rules, in order: crlf_to_lf; apply_patch_file_headers ('*** Update File: <path>' becomes '--- a/<path>' +
+    '+++ b/<path>', only when the diff has no ---/+++ header of its own); drop_patch_markers (remaining lines
+    starting with '*** ', e.g. '*** Begin Patch', '*** End of File'); trailing_newline; add_file_headers (only when there are @@ hunks, no `--- `, `+++ ` or
     `diff --git` line at all, and exactly one target file); compute_hunk_ranges (an '@@' with no line numbers: the
     hunk's old lines are located in the source file the model was shown and must match exactly once). Content
     lines are never changed. The caller re-validates the result and keeps the raw diff if it is still invalid."""
@@ -328,6 +331,16 @@ def normalize_diff(diff: str, target_files: set[str], sources: dict[str, str] | 
     if "\r" in text:
         text = text.replace("\r\n", "\n").replace("\r", "\n")
         rules.append("crlf_to_lf")
+    if not any(ln.startswith(("--- ", "+++ ")) for ln in text.split("\n")) and "*** Update File: " in text:
+        out = []
+        for ln in text.split("\n"):
+            if ln.startswith("*** Update File: "):
+                path = ln[len("*** Update File: "):].strip().replace("\\", "/")
+                out += [f"--- a/{path}", f"+++ b/{path}"]
+            else:
+                out.append(ln)
+        text = "\n".join(out)
+        rules.append("apply_patch_file_headers")
     kept = [ln for ln in text.split("\n") if not ln.startswith("*** ")]
     if len(kept) != len(text.split("\n")):
         text = "\n".join(kept)
