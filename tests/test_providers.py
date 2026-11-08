@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -28,6 +29,10 @@ java.lang.NullPointerException: Cannot invoke "String.trim()" because "customer"
 
 def sources():
     return {p: (REPO / p).read_text(encoding="utf-8") for p in (SERVICE, CONTROLLER)}
+
+
+def sha(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 @pytest.fixture
@@ -156,14 +161,17 @@ def test_replay_mode_reads_cache_and_makes_no_network_call(tmp_path, no_network)
     key = prov.cache_key(prov.diagnosis_messages(incident, sources()))
     answer = {"causes": [{"rank": 1, "file": SERVICE, "line": 46, "reason": "customer is not null-checked",
                           "evidence": "NullPointerException at OrderService.java:46"}]}
-    (tmp_path / f"{key}.json").write_text(json.dumps({"key": key, "response": json.dumps(answer)}), encoding="utf-8")
+    response = json.dumps(answer)
+    (tmp_path / f"{key}.json").write_text(json.dumps({"key": key, "cache_key_version": providers.CACHE_KEY_VERSION,
+                                                      "response": response}), encoding="utf-8")
 
     diag = prov.diagnose(incident, sources())
 
     assert no_network == []
     assert diag.provider_mode == "replay" and diag.model == "test-model"
     assert (diag.causes[0].file, diag.causes[0].line) == (SERVICE, 46)
-    assert diag.attempts == [{"attempt": 1, "cache_key": key, "ok": True, "error": None}]
+    assert diag.attempts == [{"attempt": 1, "cache_key": key, "raw_sha256": sha(response), "ok": True,
+                              "error": None}]
 
 
 def test_replay_cache_miss_is_a_clear_error(tmp_path, no_network):
@@ -235,3 +243,175 @@ def test_cache_files_contain_no_secrets():
         content = path.read_text(encoding="utf-8")
         for pat in patterns:
             assert pat.lower() not in content.lower(), f"Secret pattern {pat!r} found in {path}"
+
+
+# --------------------------------------------------------------------------- prompt leakage guard (audit F-15)
+
+def test_prompts_never_carry_fault_ids_or_oracle_words():
+    """Nothing the model sees may name the fault, a candidate kind, or the oracle (roadmap S4 leakage rule)."""
+    import re
+    p = providers.LLMProvider("replay", env=ENV)
+    incident = {"fault_id": "F06", "kind": "probe_mismatch", "rule": "probe_mismatch",
+                "endpoint": "/api/orders/2/discount", "status": 200, "expected": "900.00", "actual": "1000.00"}
+    diag = Diagnosis(causes=[Cause(rank=1, file=SERVICE, line=40, reason="threshold check", evidence="probe returned 1000.00")], provider_mode="replay")
+    messages = p.diagnosis_messages(incident, sources()) + p.patch_messages(diag, sources(), 3)
+    text = json.dumps(messages)
+    assert not re.search(r"\bF\d\d\b", text), "fault id reached the prompt"
+    for word in ("hidden_tests", "HiddenTest", "labels.json", "overfitting", "regressive", "insecure",
+                 "ineffective", "candidate_kind", "expected_symptom", "diagnosed_file"):
+        assert word not in text, word
+
+
+# --------------------------------------------------------------------------- S2: diff structure / normalizer
+
+F06_CORRECT = (REPO / "faults/F06/candidates/correct.diff").read_text(encoding="utf-8")
+F06_HUNK_ONLY = F06_CORRECT[F06_CORRECT.index("@@"):]       # the qwen2.5-coder:7b failure shape (audit F-14)
+
+
+@pytest.mark.parametrize("fault", ["F01", "F04", "F06"])
+def test_every_scripted_candidate_is_structurally_valid(fault):
+    for path in sorted((REPO / "faults" / fault / "candidates").glob("*.diff")):
+        assert providers.validate_diff_structure(path.read_text(encoding="utf-8")) == [], path.name
+
+
+def test_validator_names_each_structural_problem():
+    v = providers.validate_diff_structure
+    assert v("") == ["empty diff"]
+    assert "no ---/+++ file header" in v(F06_HUNK_ONLY)
+    assert any("no ---/+++ file header before it" in p for p in v(F06_HUNK_ONLY))
+    assert "CRLF line endings" in v(F06_CORRECT.replace("\n", "\r\n"))
+    assert "no trailing newline" in v(F06_CORRECT.rstrip("\n"))
+    malformed = F06_CORRECT.replace("@@ -36,7 +36,7 @@", "@@ -36,7 +36,7")
+    assert any("malformed header" in p for p in v(malformed))
+    too_few = F06_CORRECT.replace("@@ -36,7 +36,7 @@", "@@ -36,9 +36,9 @@")
+    assert any("does not match header" in p for p in v(too_few))
+    too_many = F06_CORRECT.replace("@@ -36,7 +36,7 @@", "@@ -36,5 +36,5 @@")
+    assert any("more body lines than header" in p for p in v(too_many))
+    assert "no hunks" in v("--- a/x\n+++ b/x\n")
+
+
+def test_normalizer_adds_headers_only_for_a_single_target_file():
+    text, rules = providers.normalize_diff(F06_HUNK_ONLY, {SERVICE})
+    assert rules == ["add_file_headers"]
+    assert text == f"--- a/{SERVICE}\n+++ b/{SERVICE}\n" + F06_HUNK_ONLY
+    assert providers.validate_diff_structure(text) == []
+    assert providers.normalize_diff(F06_HUNK_ONLY, {SERVICE, CONTROLLER}) == (F06_HUNK_ONLY, [])
+    assert providers.normalize_diff(F06_HUNK_ONLY, set()) == (F06_HUNK_ONLY, [])
+
+
+def test_normalizer_is_deterministic_and_fixes_line_endings():
+    crlf = F06_CORRECT.replace("\n", "\r\n").rstrip("\r\n")
+    first = providers.normalize_diff(crlf, {SERVICE})
+    assert first == providers.normalize_diff(crlf, {SERVICE})
+    assert first == (F06_CORRECT, ["crlf_to_lf", "trailing_newline"])
+
+
+def draft(monkeypatch, tmp_path, diffs, causes_files=(SERVICE,)):
+    response = json.dumps({"patches": [{"diff": d, "explanation": "x"} for d in diffs]})
+    fake_llm(monkeypatch, [response])
+    causes = [Cause(i, f, None, "r", "e") for i, f in enumerate(causes_files, start=1)]
+    diag = Diagnosis(causes=causes, provider_mode="live")
+    prov = get_provider("live", cache_dir=tmp_path, env=ENV)
+    return prov.draft_patches(diag, sources(), "F06", n=len(diffs)), response
+
+
+def test_raw_valid_patch_is_used_unchanged(tmp_path, monkeypatch):
+    (p,), response = draft(monkeypatch, tmp_path, [F06_CORRECT])
+    assert p.format_status == "raw_valid" and p.format_problems == []
+    assert p.diff == F06_CORRECT and p.raw_diff is None
+    assert p.raw_diff_sha256 == p.diff_sha256 == sha(F06_CORRECT)
+    assert p.normalizer_version is None and p.normalizer_rules == []
+    assert p.raw_output_sha256 == sha(response) == p.attempts[-1]["raw_sha256"]
+    assert p.applies is True
+
+
+def test_headerless_hunk_is_normalized_and_both_hashes_are_kept(tmp_path, monkeypatch):
+    (p,), response = draft(monkeypatch, tmp_path, [F06_HUNK_ONLY])
+    assert p.format_status == "normalized"
+    assert p.normalizer_rules == ["add_file_headers"]
+    assert p.normalizer_version == providers.NORMALIZER_VERSION
+    assert any("file header" in prob for prob in p.format_problems)
+    assert p.raw_diff == F06_HUNK_ONLY and p.diff.startswith(f"--- a/{SERVICE}\n+++ b/{SERVICE}\n@@")
+    assert p.raw_diff_sha256 == sha(F06_HUNK_ONLY) and p.diff_sha256 == sha(p.diff) != p.raw_diff_sha256
+    assert p.raw_output_sha256 == sha(response)
+    assert p.applies is True, p.apply_error           # the normalized diff really applies
+
+
+def test_unfixable_diffs_are_marked_invalid_and_left_untouched(tmp_path, monkeypatch):
+    miscounted = F06_CORRECT.replace("@@ -36,7 +36,7 @@", "@@ -36,9 +36,9 @@")
+    patches, _ = draft(monkeypatch, tmp_path, [F06_HUNK_ONLY, miscounted], causes_files=(SERVICE, CONTROLLER))
+    for p, raw in zip(patches, [F06_HUNK_ONLY, miscounted]):
+        assert p.format_status == "invalid"
+        assert p.diff == raw and p.raw_diff is None and p.normalizer_rules == []
+        assert p.diff_sha256 == p.raw_diff_sha256 == sha(raw)
+        assert p.normalizer_version == providers.NORMALIZER_VERSION and p.format_problems
+        assert p.applies is False and p.apply_error     # failure is an outcome, not hidden
+
+
+def test_scripted_patches_carry_no_llm_format_status():
+    diag = Diagnosis(causes=[Cause(1, SERVICE, None, "r", "e")], provider_mode="rule")
+    for p in get_provider("scripted").draft_patches(diag, {}, "F06", n=None):
+        assert p.format_status is None and p.raw_output_sha256 is None
+
+
+def test_every_attempt_records_raw_sha_and_cache_key(tmp_path, monkeypatch):
+    cause = {"rank": 1, "file": SERVICE, "line": 46, "reason": "r", "evidence": "e"}
+    replies = ["not json", json.dumps({"causes": [cause]})]
+    fake_llm(monkeypatch, replies)
+    diag = get_provider("live", cache_dir=tmp_path, env=ENV).diagnose({"kind": "exception"}, sources())
+    assert [a["raw_sha256"] for a in diag.attempts] == [sha(r) for r in replies]
+    assert all(len(a["cache_key"]) == 64 for a in diag.attempts)
+    assert len({a["cache_key"] for a in diag.attempts}) == 2   # the retry prompt differs, so does its key
+
+
+def test_transport_error_attempt_has_no_raw_sha(tmp_path, monkeypatch):
+    answer = json.dumps({"causes": [{"rank": 1, "file": SERVICE, "line": 46, "reason": "r", "evidence": "e"}]})
+    calls = []
+
+    def post(url, json=None, headers=None, timeout=None):
+        calls.append(json)
+        if len(calls) == 1:
+            raise requests.ConnectionError("refused")
+        return FakeResponse(answer)
+
+    monkeypatch.setattr(providers.requests, "post", post)
+    diag = get_provider("live", cache_dir=tmp_path, env=ENV).diagnose({"kind": "exception"}, sources())
+    first, second = diag.attempts
+    assert first["ok"] is False and first["raw_sha256"] is None and "ConnectionError" in first["error"]
+    assert second["ok"] is True and second["raw_sha256"] == sha(answer)
+
+
+# --------------------------------------------------------------------------- S2: versioned cache key
+
+def test_cache_key_includes_version_and_new_entries_record_it(tmp_path, monkeypatch):
+    prov = get_provider("live", cache_dir=tmp_path, env=ENV)
+    msgs = prov.diagnosis_messages({"kind": "x"}, {})
+    assert prov.cache_key(msgs) != prov.cache_key(msgs, version=1)
+    assert prov.cache_key(msgs) != prov.cache_key(msgs, version=providers.CACHE_KEY_VERSION + 1)
+
+    cause = {"rank": 1, "file": SERVICE, "line": 46, "reason": "r", "evidence": "e"}
+    fake_llm(monkeypatch, [json.dumps({"causes": [cause]})])
+    diag = prov.diagnose({"kind": "exception"}, sources())
+    (entry_path,) = tmp_path.glob("*.json")
+    entry = json.loads(entry_path.read_text(encoding="utf-8"))
+    assert entry["cache_key_version"] == providers.CACHE_KEY_VERSION
+    assert entry["key"] == entry_path.stem == diag.attempts[0]["cache_key"]
+
+
+def test_replay_of_old_key_scheme_names_the_version_mismatch(tmp_path, no_network):
+    prov = get_provider("replay", cache_dir=tmp_path, env=ENV)
+    incident = {"kind": "exception", "stack_trace": NPE_TRACE}
+    old_key = prov.cache_key(prov.diagnosis_messages(incident, sources()), version=1)
+    (tmp_path / f"{old_key}.json").write_text(json.dumps({"key": old_key, "response": "{}"}), encoding="utf-8")
+    with pytest.raises(ProviderError, match="version mismatch.*cache key version 1"):
+        prov.diagnose(incident, sources())
+    assert no_network == []
+
+
+def test_replay_entry_without_matching_version_field_is_refused(tmp_path, no_network):
+    prov = get_provider("replay", cache_dir=tmp_path, env=ENV)
+    incident = {"kind": "exception", "stack_trace": NPE_TRACE}
+    key = prov.cache_key(prov.diagnosis_messages(incident, sources()))
+    (tmp_path / f"{key}.json").write_text(json.dumps({"key": key, "response": "{}"}), encoding="utf-8")
+    with pytest.raises(ProviderError, match="version mismatch.*cache_key_version=None"):
+        prov.diagnose(incident, sources())
