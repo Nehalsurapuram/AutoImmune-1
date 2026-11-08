@@ -30,3 +30,6 @@ Thumbs.db
 
 # Personal editor settings
 .vscode/
+
+# Claude Code agent worktrees
+.claude/worktrees/
