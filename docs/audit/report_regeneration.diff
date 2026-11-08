@@ -1,0 +1,115 @@
+4c4
+< > Approvals: **0 human_cli** (typed at the prompt), **0 human_relayed** (human decision relayed by a tool), **0 scripted_test** (no human). Scripted approvals are never counted as human review.
+---
+> > Approvals: **1 human_cli** (typed at the prompt), **0 human_relayed** (human decision relayed by a tool), **0 scripted_test** (no human). Scripted approvals are never counted as human review.
+9c9
+< - `results/evidence.jsonl` sha256 `616341328717`: 31 rows, 0 excluded as invalid (observer_suspended), 6 superseded by a later row for the same candidate.
+---
+> - `results/evidence.jsonl` sha256 `105d8014929d`: 79 rows, 0 excluded as invalid (observer_suspended), 54 superseded by a later row for the same candidate.
+50c50,52
+< None.
+---
+> | source | run | fault | candidate | deployed |
+> |---|---|---|---|---|
+> | human_cli | f04-rule-scripted-20261107t104820z | F04 | F04-scripted-835a25e8 | False |
+59,63c61,65
+< | F01 | F01-scripted-17c59e87 | f01-live-diag-1 |
+< | F01 | F01-scripted-4eeb7107 | f01-live-diag-1 |
+< | F01 | F01-scripted-575d5aad | f01-live-diag-1 |
+< | F01 | F01-scripted-b0cc1dd7 | f01-live-diag-1 |
+< | F01 | F01-scripted-fb8fb0d5 | f01-live-diag-1 |
+---
+> | F01 | F01-scripted-17c59e87 | f01-rule-scripted-20261107t104040z |
+> | F01 | F01-scripted-4eeb7107 | f01-rule-scripted-20261107t104040z |
+> | F01 | F01-scripted-575d5aad | f01-rule-scripted-20261107t104040z |
+> | F01 | F01-scripted-b0cc1dd7 | f01-rule-scripted-20261107t104040z |
+> | F01 | F01-scripted-fb8fb0d5 | f01-rule-scripted-20261107t104040z |
+67,80c69,82
+< | F04 | F04-scripted-0b81741d | f04-live-diag-1 |
+< | F04 | F04-scripted-13aa249d | f04-live-diag-1 |
+< | F04 | F04-scripted-34e008d0 | f04-live-diag-1 |
+< | F04 | F04-scripted-835a25e8 | f04-live-diag-1 |
+< | F04 | F04-scripted-97c9621a | f04-live-diag-1 |
+< | F06 | F06-live-1 | f06-live-1 |
+< | F06 | F06-live-2 | f06-live-1 |
+< | F06 | F06-live-3 | f06-live-1 |
+< | F06 | F06-scripted-05420f6c | f06-rule-scripted-20261023t161709z |
+< | F06 | F06-scripted-0d38b9b9 | f06-rule-scripted-20261023t161709z |
+< | F06 | F06-scripted-7509cb64 | f06-rule-scripted-20261023t161709z |
+< | F06 | F06-scripted-81484cbc | f06-rule-scripted-20261023t161709z |
+< | F06 | F06-scripted-b16cfed7 | f06-rule-scripted-20261023t161709z |
+< | F06 | F06-scripted-fd6a948c | f06-rule-scripted-20261023t161709z |
+---
+> | F04 | F04-scripted-0b81741d | f04-rule-scripted-20261107t104820z |
+> | F04 | F04-scripted-13aa249d | f04-rule-scripted-20261107t104820z |
+> | F04 | F04-scripted-34e008d0 | f04-rule-scripted-20261107t104820z |
+> | F04 | F04-scripted-835a25e8 | f04-rule-scripted-20261107t104820z |
+> | F04 | F04-scripted-97c9621a | f04-rule-scripted-20261107t104820z |
+> | F06 | F06-live-1 | f06-live-live-20261108t052717z |
+> | F06 | F06-live-2 | f06-live-live-20261108t052717z |
+> | F06 | F06-live-3 | f06-live-live-20261108t052717z |
+> | F06 | F06-scripted-05420f6c | f06-rule-scripted-20261108t141710z |
+> | F06 | F06-scripted-0d38b9b9 | f06-rule-scripted-20261108t141710z |
+> | F06 | F06-scripted-7509cb64 | f06-rule-scripted-20261108t141710z |
+> | F06 | F06-scripted-81484cbc | f06-rule-scripted-20261108t141710z |
+> | F06 | F06-scripted-b16cfed7 | f06-rule-scripted-20261108t141710z |
+> | F06 | F06-scripted-fd6a948c | f06-rule-scripted-20261108t141710z |
+93,97d94
+< | F01 | F01-scripted-17c59e87 | qwen2.5-coder:7b | live | scripted | pass | fail | not_run | not_run | REJECT | no |
+< | F01 | F01-scripted-4eeb7107 | qwen2.5-coder:7b | live | scripted | pass | pass | pass | fail | REJECT | no |
+< | F01 | F01-scripted-575d5aad | qwen2.5-coder:7b | live | scripted | pass | pass | pass | pass | AUTO_APPLY | no |
+< | F01 | F01-scripted-b0cc1dd7 | qwen2.5-coder:7b | live | scripted | pass | pass | fail | not_run | REJECT | no |
+< | F01 | F01-scripted-fb8fb0d5 | qwen2.5-coder:7b | live | scripted | pass | pass | pass | pass | AUTO_APPLY | no |
+101,108c98,100
+< | F04 | F04-scripted-0b81741d | qwen2.5-coder:7b | live | scripted | pass | pass | fail | not_run | REJECT | no |
+< | F04 | F04-scripted-13aa249d | qwen2.5-coder:7b | live | scripted | pass | pass | pass | fail | REJECT | no |
+< | F04 | F04-scripted-34e008d0 | qwen2.5-coder:7b | live | scripted | pass | pass | pass | pass | AUTO_APPLY | no |
+< | F04 | F04-scripted-835a25e8 | qwen2.5-coder:7b | live | scripted | pass | pass | pass | pass | ESCALATE | no |
+< | F04 | F04-scripted-97c9621a | qwen2.5-coder:7b | live | scripted | pass | fail | not_run | not_run | REJECT | no |
+< | F06 | F06-live-1 | qwen2.5-coder:7b | live | live | fail | not_run | not_run | not_run | REJECT | no |
+< | F06 | F06-live-2 | qwen2.5-coder:7b | live | live | fail | not_run | not_run | not_run | REJECT | no |
+< | F06 | F06-live-3 | qwen2.5-coder:7b | live | live | fail | not_run | not_run | not_run | REJECT | no |
+---
+> | F06 | F06-live-1 | qwen2.5-coder:1.5b | live | live | pass | fail | not_run | not_run | REJECT | no |
+> | F06 | F06-live-2 | qwen2.5-coder:1.5b | live | live | pass | fail | not_run | not_run | REJECT | no |
+> | F06 | F06-live-3 | qwen2.5-coder:1.5b | live | live | pass | fail | not_run | not_run | REJECT | no |
+114,116c106,108
+< | F01 | qwen2.5-coder:7b | 8/8 = 100.0% [67.6%, 100.0%] | 8/8 = 100.0% [67.6%, 100.0%] | 8 |
+< | F04 | qwen2.5-coder:7b | 0/8 = 0.0% [0.0%, 32.4%] | 0/8 = 0.0% [0.0%, 32.4%] | 8 |
+< | F06 | qwen2.5-coder:7b | 3/3 = 100.0% [43.9%, 100.0%] | 3/3 = 100.0% [43.9%, 100.0%] | 3 |
+---
+> | F01 | qwen2.5-coder:7b | 3/3 = 100.0% [43.9%, 100.0%] | 3/3 = 100.0% [43.9%, 100.0%] | 3 |
+> | F04 | qwen2.5-coder:7b | 0/3 = 0.0% [0.0%, 56.1%] | 0/3 = 0.0% [0.0%, 56.1%] | 3 |
+> | F06 | qwen2.5-coder:1.5b | 3/3 = 100.0% [43.9%, 100.0%] | 3/3 = 100.0% [43.9%, 100.0%] | 3 |
+### approvals.csv
+1a2
+> human_cli,f04-rule-scripted-20261107t104820z,F04,F04-scripted-835a25e8,False
+### llm_diagnosis.csv
+2,4c2,4
+< F01,qwen2.5-coder:7b,8,8,1.0000,0.6756,1.0000,8,8,1.0000,0.6756,1.0000
+< F04,qwen2.5-coder:7b,0,8,0.0000,0.0000,0.3244,0,8,0.0000,0.0000,0.3244
+< F06,qwen2.5-coder:7b,3,3,1.0000,0.4385,1.0000,3,3,1.0000,0.4385,1.0000
+---
+> F01,qwen2.5-coder:7b,3,3,1.0000,0.4385,1.0000,3,3,1.0000,0.4385,1.0000
+> F04,qwen2.5-coder:7b,0,3,0.0000,0.0000,0.5615,0,3,0.0000,0.0000,0.5615
+> F06,qwen2.5-coder:1.5b,3,3,1.0000,0.4385,1.0000,3,3,1.0000,0.4385,1.0000
+### llm_units.csv
+5,9d4
+< F01,F01-scripted-17c59e87,qwen2.5-coder:7b,live,scripted,pass,fail,not_run,not_run,high,REJECT,False,True,True
+< F01,F01-scripted-4eeb7107,qwen2.5-coder:7b,live,scripted,pass,pass,pass,fail,high,REJECT,False,True,True
+< F01,F01-scripted-575d5aad,qwen2.5-coder:7b,live,scripted,pass,pass,pass,pass,low,AUTO_APPLY,False,True,True
+< F01,F01-scripted-b0cc1dd7,qwen2.5-coder:7b,live,scripted,pass,pass,fail,not_run,high,REJECT,False,True,True
+< F01,F01-scripted-fb8fb0d5,qwen2.5-coder:7b,live,scripted,pass,pass,pass,pass,low,AUTO_APPLY,False,True,True
+13,20c8,10
+< F04,F04-scripted-0b81741d,qwen2.5-coder:7b,live,scripted,pass,pass,fail,not_run,high,REJECT,False,False,False
+< F04,F04-scripted-13aa249d,qwen2.5-coder:7b,live,scripted,pass,pass,pass,fail,high,REJECT,False,False,False
+< F04,F04-scripted-34e008d0,qwen2.5-coder:7b,live,scripted,pass,pass,pass,pass,low,AUTO_APPLY,False,False,False
+< F04,F04-scripted-835a25e8,qwen2.5-coder:7b,live,scripted,pass,pass,pass,pass,medium,ESCALATE,False,False,False
+< F04,F04-scripted-97c9621a,qwen2.5-coder:7b,live,scripted,pass,fail,not_run,not_run,high,REJECT,False,False,False
+< F06,F06-live-1,qwen2.5-coder:7b,live,live,fail,not_run,not_run,not_run,high,REJECT,False,True,True
+< F06,F06-live-2,qwen2.5-coder:7b,live,live,fail,not_run,not_run,not_run,high,REJECT,False,True,True
+< F06,F06-live-3,qwen2.5-coder:7b,live,live,fail,not_run,not_run,not_run,high,REJECT,False,True,True
+---
+> F06,F06-live-1,qwen2.5-coder:1.5b,live,live,pass,fail,not_run,not_run,high,REJECT,False,True,True
+> F06,F06-live-2,qwen2.5-coder:1.5b,live,live,pass,fail,not_run,not_run,high,REJECT,False,True,True
+> F06,F06-live-3,qwen2.5-coder:1.5b,live,live,pass,fail,not_run,not_run,high,REJECT,False,True,True

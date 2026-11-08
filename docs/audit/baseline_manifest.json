@@ -1,0 +1,1241 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-08T16:25:56+00:00",
+  "generator": "tools/audit_baseline.py",
+  "git": {
+    "head": "ee36f8332fe891ccb5e42c7e31d8f1d8fbe972fa",
+    "branch": "main",
+    "dirty": true,
+    "changes": [
+      {
+        "xy": "A ",
+        "path": "cache/31bf4c9fd80477d5e5b0bc0dbc44a339d24ac1b0660da2f8b5da2a2738b7c646.json"
+      },
+      {
+        "xy": "A ",
+        "path": "cache/335d9d529c80741c0e299aaea710c39152e88b328e3e9231c1e0c63dea96a86e.json"
+      },
+      {
+        "xy": "A ",
+        "path": "cache/497b4902c70cec798b98406bb24b610a06747dd7c5e9f7f05ba10d10bac872e7.json"
+      },
+      {
+        "xy": "A ",
+        "path": "cache/4e82388e475fc06c0fc4c697399d5da50a5bee11a4cdb224233f89455cb83bf0.json"
+      },
+      {
+        "xy": "A ",
+        "path": "cache/5f15ac78b501d0f7354199154d8657457e566b9a14d74f6338c12d84f8cf136d.json"
+      },
+      {
+        "xy": "A ",
+        "path": "cache/8eb002e4f907327b2e59699a097aebc27b65db03141ffac276d24cc37e8091fd.json"
+      },
+      {
+        "xy": "A ",
+        "path": "cache/928fa7161323a48c20e1e62b5d4f0865f5186d812e8b4eba5bb51d4fb4f175f4.json"
+      },
+      {
+        "xy": "A ",
+        "path": "cache/b68e75c24b478d8f04c4966e30ca70652bf3527b0c6bd340094fb3144efb3eb2.json"
+      },
+      {
+        "xy": "A ",
+        "path": "cache/cbc4382c142158104528abbadb73ee8c3a0b793d6b773c97660e4cb39c6e6e21.json"
+      },
+      {
+        "xy": "A ",
+        "path": "cache/d563c96727dd91afe98933b4ed4d166c5c5edc90d509c2c1650e36c13c1329d1.json"
+      },
+      {
+        "xy": "A ",
+        "path": "cache/d8988c882cfd76d3f2be863ac405d326ab7415e578cbf1e25041b74cafef9b05.json"
+      },
+      {
+        "xy": "A ",
+        "path": "cache/ed636168bda721075160105d4258ea1d90d397b7e0de743ad902e87149462c93.json"
+      },
+      {
+        "xy": "M ",
+        "path": "pipeline/__main__.py"
+      },
+      {
+        "xy": "M ",
+        "path": "pipeline/deploy.py"
+      },
+      {
+        "xy": "M ",
+        "path": "pipeline/orchestrator.py"
+      },
+      {
+        "xy": "A ",
+        "path": "pipeline/providers.py.backup"
+      },
+      {
+        "xy": "A ",
+        "path": "pipeline/terminal.py"
+      },
+      {
+        "xy": "A ",
+        "path": "tests/test_providers.py.backup"
+      },
+      {
+        "xy": "A ",
+        "path": "tests/test_terminal.py"
+      },
+      {
+        "xy": "M ",
+        "path": "tools/make_dashboard.py"
+      },
+      {
+        "xy": "A ",
+        "path": "tools/research/README.md"
+      },
+      {
+        "xy": "A ",
+        "path": "tools/research/cra_prototype.py"
+      },
+      {
+        "xy": "A ",
+        "path": "tools/research/test_cra_prototype.py"
+      },
+      {
+        "xy": "??",
+        "path": ".vscode/"
+      },
+      {
+        "xy": "??",
+        "path": "tests/test_audit_baseline.py"
+      },
+      {
+        "xy": "??",
+        "path": "tools/audit_baseline.py"
+      }
+    ],
+    "tracked_hidden_or_label_files": []
+  },
+  "archive": {
+    "name": "AutoImmune.zip",
+    "bytes": 54184120,
+    "sha256": "9c90e7e34c3b6bd34d09200d2ad7db68057578d09b1a397cde3b65af2e89102e"
+  },
+  "environment": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.0",
+    "python_implementation": "CPython",
+    "tools": {
+      "git": {
+        "status": "ok",
+        "output": "git version 2.55.0.windows.2"
+      },
+      "java": {
+        "status": "ok",
+        "output": "java version \"1.8.0_441\""
+      },
+      "mvn": {
+        "status": "missing",
+        "output": null
+      },
+      "docker_client": {
+        "status": "error",
+        "output": "29.8.0"
+      },
+      "docker_server": {
+        "status": "error",
+        "output": "failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified."
+      },
+      "semgrep": {
+        "status": "missing",
+        "output": null
+      },
+      "ollama": {
+        "status": "missing",
+        "output": null
+      }
+    }
+  },
+  "oracle_presence": {
+    "hidden_tests_dirs": [],
+    "labels_files": []
+  },
+  "files_sha256": {
+    ".gitattributes": "63180677bec3fbbf499f29c30362af6002e236abba6d588038943ac8c8dbae50",
+    ".gitignore": "8adecf60de6a9f7666cc6f1455dd546192b17b1eb39c9a59fb42b01e323dbd8e",
+    "AGENTS.md": "ee11710fa0d3a109058ff20647dd5e97eb0f6d591d2fcb99461ba38a1dacbcd6",
+    "README.md": "53849d86b43a10e9aa766cf9b145ff0b7ceef5865007730b60cb96d5d7cfc487",
+    "analyse.py": "451523e1878627cb6fb28aa722abcf155ab6994c723fe271be8cc1d3695b77cc",
+    "app/Dockerfile": "31d71a877c9b9db7c6f8ec97b2227294a6a0bb8eef035a5e4f70d3f19c2a721d",
+    "app/pom.xml": "a5d914e4d3f6dfc8e484fe68b953d7f27ecc4b233520df5455eae000fb4266a5",
+    "cache/065e538e898c32b6bbe4e419de4a2512f158ecc1a1ff1b24ba9fe2e1fe2e5f43.json": "e2ba4e1ab181e190b7cd28c9c0ae41c7469fe2e2345a82ce8bf49c2279255a55",
+    "cache/1ec007bc309b76200c741bdef35bc67bd3f2f6c1ca4df148166b565de7995c63.json": "52f710c1d9992ad69236d491ab0fa143ba7aa4cf72fdbd586fe271c6f30bc213",
+    "cache/2063f21abaa3a985b0918286e219d3e779536aa8e5239083a6c5e9a33a06687b.json": "cbc516e111a5ad2d8058cf33cdb2fc1c18a8cbf7f16ed2cffbcaabeb1bf3b12c",
+    "cache/2f9c4244f718c453dd06e9c7c6f65072210b09a12d73077a1609dca637323008.json": "96a1fcab8fad65abd87969a28ebc71572543c310a79889bdbff99ff3107e200a",
+    "cache/31bf4c9fd80477d5e5b0bc0dbc44a339d24ac1b0660da2f8b5da2a2738b7c646.json": "8b26a1e5c09a5d4989efe4c7bf10960025bdc32832d74b16db15f33963818303",
+    "cache/335d9d529c80741c0e299aaea710c39152e88b328e3e9231c1e0c63dea96a86e.json": "56f613f9c4703fd23dfa960406eb9774ca2d9314a6e6b2c641d91c35f75ecba8",
+    "cache/3ea71b9cfb404d32e7fdc3f2643254fea9b599f9e7fa44dcf0ce6b42a744dea9.json": "e373108edaad9d275533a6da35aac28f94ae804a68e400539c422455a997bad2",
+    "cache/497b4902c70cec798b98406bb24b610a06747dd7c5e9f7f05ba10d10bac872e7.json": "eaac7ef0e0d3454453dece0d1f08775a8c366d70e3f82b35b5085641bf6805ff",
+    "cache/4b07c1eb99cd156fb31b59bdcecc14e8b4a707c7ba0f17d693cbbb558041e7b3.json": "63d061585df650deadd96d241bc21f01c3d3f8c7016670244c01c876a768a889",
+    "cache/4e82388e475fc06c0fc4c697399d5da50a5bee11a4cdb224233f89455cb83bf0.json": "64916b82f32098d17ee0238726b51af6669733f2a1c8f210ed4f34756353cb76",
+    "cache/5688f4d7c868f44a933abd9df5c76e8568df9ce91f1c9684296f557c82c63645.json": "bb02fa0927477915e88d8bfd75a9589619982a80608a80a89970e4e928a3ac3b",
+    "cache/56a05a93b9df177de36fb397f5d94c623ee599f1c14fc483faeaed1d66fd9892.json": "1435e6d19c79c93552bcbc9bbcba5d521737538e510791ce75de6f6261c94f7c",
+    "cache/5bc6d23065a40fcc6e23feeb3f53d7ed9236362593ed6e842fb768fc9a393d0c.json": "4d02b48e6fd13ca6377e554381faba3c0df5c82d25d4440a44196aaeb1b25248",
+    "cache/5f15ac78b501d0f7354199154d8657457e566b9a14d74f6338c12d84f8cf136d.json": "ccb0bfa35b751ac041d167a49a6802e8705d770e50f5968869b96e49293ea9dd",
+    "cache/66ec4d12e79b9e6c047026c3c1db3e9fd12bfe9dcc35c4d5593eb27588cc07eb.json": "3880a563c6fd758143caf2ba0763dc794dbd87c03c66fe125675e721ddd0475e",
+    "cache/74d9bd628ae1c86ae34011f9ec21834f40ca440fa2af11c2fbab98df2e779229.json": "55958926fe450a146a594394b049c356eb31696d082462a8e4e5d94921e7f30d",
+    "cache/7b309cc10277c53089e2863c30d16eae3f8a2955e127918821168b99275b58f5.json": "8291bf6bc807697ab2095e210e83b5d078f1ffcb52c4662d6e6f9f0bd21e7894",
+    "cache/8eb002e4f907327b2e59699a097aebc27b65db03141ffac276d24cc37e8091fd.json": "1335af9e7fca7e9960ecc0602f718da6a9f975eb41e2ba0633685c21675b1b45",
+    "cache/928fa7161323a48c20e1e62b5d4f0865f5186d812e8b4eba5bb51d4fb4f175f4.json": "81253e723dbd672d926f9d99133f43086e8367a557673919d83248c3ec959e74",
+    "cache/987f6e9f774f7bf56fc2f625c4ef41ce611c038947e89c3a91e677adcfa21e92.json": "323f491680936e24bd33f45fa7a93ec76cebfd210893c307d3e0886c79f2bdde",
+    "cache/b68e75c24b478d8f04c4966e30ca70652bf3527b0c6bd340094fb3144efb3eb2.json": "a51a7b5283ff08297932baf4b077a1ed050a045992525df43a6456fb29bb25ab",
+    "cache/c83532e72286082326d9ecec2558411d7718434d01c7a9eaef61b323e966173f.json": "a0829b7f1f7d156e0cee1b2aa2ce12a5ccb2b7da9047fbc897204ffa9c824ae3",
+    "cache/cbc4382c142158104528abbadb73ee8c3a0b793d6b773c97660e4cb39c6e6e21.json": "4b50ab9cb78ef5e6ffecad7312b0a9fa0e308c1969a22682cf9d438ed8a62068",
+    "cache/d563c96727dd91afe98933b4ed4d166c5c5edc90d509c2c1650e36c13c1329d1.json": "cdf25634fcfe23fc5ed1c13615cc9ae3ff6d1fc27c92a1ff80bf88d027a33cdf",
+    "cache/d8988c882cfd76d3f2be863ac405d326ab7415e578cbf1e25041b74cafef9b05.json": "1684b0b26ef7f725b61c58667d25666f62c563bf035c39af52118f41d64c036d",
+    "cache/da66be09ae1120ebe63c76cd70a296b7bd2f7f274b1a02a283acdc4abe898834.json": "65dc749a1d9c154387c8499855f9e817e371ab571182bc5edd264b36c91cf1dd",
+    "cache/db94b31d304931f47e67f72a9cebd8296ed97ad046fcb752816c203e5363e37d.json": "1944449bbef17d802ae2ac279e9c3523ae51b29f1d6bd30498aae8942276c26d",
+    "cache/ed636168bda721075160105d4258ea1d90d397b7e0de743ad902e87149462c93.json": "d84ce078921f0a5e3bb8baff7a08f999fdf969b2fda6c05e5e73e5bd9db2ebc5",
+    "config/decision.yaml": "61a350053d95506c0240b62170823d8fb9def2bf10bff8d63c54fd91e3bbffc0",
+    "config/probes.yaml": "02de43124663840b3cbccf765b3cb20f30e3abe4846922e10b852caafbfdc941",
+    "faults/F01/candidates/correct.diff": "575d5aaddea11a367c3b426fff25fb10643dd205e9e2a35b03ad119fc4ff895d",
+    "faults/F01/candidates/ineffective.diff": "17c59e87fb023aa6fd557507665d72bf835de56dd19e126c4da182ef9c5a9046",
+    "faults/F01/candidates/insecure.diff": "4eeb71079297b06619b04cb2a07ff8fa2b9dfe760b0231161230c6c4a1e78a46",
+    "faults/F01/candidates/overfitting.diff": "fb8fb0d5b87cf345ebd9c5dbea5f5ada2b80cba79fea73d458318d07ba4937f8",
+    "faults/F01/candidates/regressive.diff": "b0cc1dd7166d1dae3d245ff106e003aa6c5fd40e2897d3d8c4eeedc16b93b7e3",
+    "faults/F01/fault.json": "0d167f94756ed7bc9c6de140d95925de4e81615e69fec2c5789074c272b8a8f0",
+    "faults/F01/inject.diff": "4a27fbae7f7b567a1ed9323dfe8186b74650b6e341f3a8e9267d7a67a74fa817",
+    "faults/F01/target_test/F01TargetTest.java": "a7a18fe44b9b81d366083a3e0037a106cd44100c2d104f0c6bc235448dc8ed88",
+    "faults/F04/candidates/correct.diff": "835a25e8bdd6a1acc75ee2f4d340a2c2237415fc224390141fe78fa3b654403e",
+    "faults/F04/candidates/ineffective.diff": "97c9621ae4d4cbd87f8a6df8a00ecdae572f1f22530a03d5a8643aaca29f2049",
+    "faults/F04/candidates/insecure.diff": "13aa249dc0dcfc6b9ef1447667c1bc7596ad2cbe37b661b9cd2e6cbcf296cccc",
+    "faults/F04/candidates/overfitting.diff": "34e008d0a50e99dce3a8ca66295b1e19ab8d62945cbaec56ddf0cded61b68c23",
+    "faults/F04/candidates/regressive.diff": "0b81741d4fa755b21815a6a9fe948abca123b76cc7a60690393af6f888782c57",
+    "faults/F04/fault.json": "fd70bb093de9b68093bf65c4ede08fbf5a79de209e1b5615ffdc9d020d514e36",
+    "faults/F04/inject.diff": "4225d130ff5d11048bd3162f64100f5efc83f9fa5459726cdac8ba785321b7a1",
+    "faults/F04/target_test/F04TargetTest.java": "6ac36eb570ed125038effc6a03bd2f2590b4a737860c241f52604a0bd3016767",
+    "faults/F06/candidates/correct.diff": "fd6a948cf6843e429b099130e65493657fb63410b87f0426cef6d08a239d5057",
+    "faults/F06/candidates/ineffective.diff": "b16cfed7dc13912a6454a2deb650585ae85d725333857b77069f7478204d53fc",
+    "faults/F06/candidates/insecure.diff": "05420f6c9b18bc7926d6fd93c6487f8c644654b771b7e7ed5f96c8b12f24233f",
+    "faults/F06/candidates/overfitting.diff": "81484cbca3c7dd0fd1d7559af7d0318e71e1166a2fefbdf6a817f7f949d674d7",
+    "faults/F06/candidates/regressive.diff": "0d38b9b9d637ba4a43b64027bacb77d9b98b7cab5fa5faade12f9a21f8e5cc26",
+    "faults/F06/candidates/slow.diff": "7509cb6494d1d7faf14cd3ff6885a5944d2ccfd6f6c7fd39fe1a60f19f25d702",
+    "faults/F06/fault.json": "3bbcfec56c010f3ba3cac8b9148855f6cec305229c66fd76728d02608c30d30c",
+    "faults/F06/inject.diff": "a97c80a4f3aa352bfc69593206e49d8cf1994922b0990c08d624d4ec211013ed",
+    "faults/F06/target_test/F06TargetTest.java": "e626352c522e8b6c871108dcd4c59b5546c6083a0193a6af8f650e23bf9df5f0",
+    "faults/verify.ps1": "0286b292f8121c05cc08ca2a604ff73b51b48005f62df044b6c410ad915fb088",
+    "faults/verify.sh": "6650307522a9577251afc123acd15a1ad02ab85a866eb483b8d930084fd1879c",
+    "pipeline/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "pipeline/__main__.py": "57615fcbf30f70fda120f433d3a109df5d1dd97959e17c4b9d47484a3936530a",
+    "pipeline/decide.py": "26d69544511e10dc2447dd88bf4e88d85f0ac24642b0d965c569ea3d719981cc",
+    "pipeline/deploy.py": "fe42a92c7f315f85912d1aaa45228332d72398ca9f90e437c6d11b1426029436",
+    "pipeline/detector.py": "1204092d73885fd06e11b08d2d3cd5b0eb97d72288d20a0c99ca52b6dc85a3bc",
+    "pipeline/observe.py": "4b43bd9f27d74ae45f433b103515b309fc34e27824d6d3c215fd2a9f3715583f",
+    "pipeline/orchestrator.py": "224ad43b55afffbcb2e21e498e016e3ca0fed77f3c6a97791913e750d041e366",
+    "pipeline/providers.py": "7fe9953b3c1e30d6770c4466cd3222d857d2d1f8de5620269bde0bd5d000f155",
+    "pipeline/record.py": "9ebab9ae83d4ff79b954d63f582af4c62d623f676467be8d5e73fb6f572be8b2",
+    "pipeline/sandbox.py": "292e5f503190b41b4b63265639920fd48747ab6770f725965d745efa4430b57a",
+    "pipeline/terminal.py": "d60dc74f6376d7b2917702007a1fc39ca2df386dd1bc01e1832548b0b797f597",
+    "pytest.ini": "740a83c0575b8fb05bee90412e697eb4ba82a1807e2adab6af279440bee437b1",
+    "requirements.txt": "1f43dd16274fd94e5932dfc4ed80dce280af6f0ddba37d914d0acb7c9ca7e671",
+    "results/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "results/approvals.csv": "f519596ae475e97a33a45724cea80706124f9f9767e27b6bef12f856096f53e6",
+    "results/dashboard.html": "aea775b58ffe8fceba0dd2b1dc0df304159e5750d1aff0dfd7818fe083dd2f46",
+    "results/decisions_by_fault.csv": "974d65c8e9438dc9af3160d9c159b86e66f76be33f37f88cda17e22641faf0b4",
+    "results/evidence.jsonl": "105d8014929dfcdbce349e1122fae3272668dc1657e99f112c7ddda0dd01a6ad",
+    "results/llm_diagnosis.csv": "7612c8d6235aa35a45ee0c6d22ef987f1bcb4f45b85fcafa8b4eec98b63ad431",
+    "results/llm_units.csv": "2687e8a973ef1590a2978a718e4acfb7b402710890101a2f1e0233be61d0503c",
+    "results/pilot_report.md": "e9e0c9b183a1ec7b04174f0c58078702bbdca3dfd513218e85a3349cc6609a80",
+    "results/policies.csv": "b746012bba3606e096af763dac457d3c89d784244f05e181640a289b8caf680d",
+    "results/rollbacks.csv": "e9a6e2af81c172f9b70b13875befdb332735510ed7e0a69e49a26debdeea8650",
+    "results/units.csv": "a9d11f25593ae7cbac9b7be7a5a1559e2c53f737df8268b0aec94e1f163abf6f",
+    "results/unsafe_first_stop.csv": "cf9d4eda5bd4168c275a5635db7f1a7163e0875732889c364cd15f7027fe4f32",
+    "tools/audit_baseline.py": "f7a1475953fcdf5adbf082fa03a337e12d3a45433a3256bb9b4d90c8d7026ba4",
+    "tools/deploy_demo.py": "0d5a39e91d36617c686a113da81cfa8a3c36ea7f97ee75e831f0841a69379a7c",
+    "tools/gate_candidates.py": "2b9435122b0b4824580e7ed87fb7251f9281f637c591ed66daeb956b2f2a7e7b",
+    "tools/gen_diffs.py": "5519a848940fc5279ae395eeee7d63cd74a487ac0d559cec9c6a3e398b36bfa7",
+    "tools/llm_smoke.py": "5796eb193175520b49fd68ac156552c0e2a3176e6e735a2cc7950b219072938b",
+    "tools/load.py": "cae89bcb4bc25458102e28ace4af233d3f25a4b188bd5c7165104c53277d1ade",
+    "tools/make_dashboard.py": "94afd7513e1baf1e9dd6a40c381bf8b242e896723d19381319cbc0aea4f7a0d7"
+  },
+  "evidence": {
+    "results/evidence.jsonl": {
+      "sha256": "105d8014929dfcdbce349e1122fae3272668dc1657e99f112c7ddda0dd01a6ad",
+      "rows": 79,
+      "distinct_fault_candidate": 25,
+      "rows_superseded_by_latest_row_rule": 54,
+      "candidate_ids_reused_across_runs": {
+        "F01-scripted-17c59e87": [
+          "f01-live-diag-1",
+          "f01-rule-scripted-20261107t104040z"
+        ],
+        "F01-scripted-4eeb7107": [
+          "f01-live-diag-1",
+          "f01-rule-scripted-20261107t104040z"
+        ],
+        "F01-scripted-575d5aad": [
+          "f01-live-diag-1",
+          "f01-rule-scripted-20261107t104040z"
+        ],
+        "F01-scripted-b0cc1dd7": [
+          "f01-live-diag-1",
+          "f01-rule-scripted-20261107t104040z"
+        ],
+        "F01-scripted-fb8fb0d5": [
+          "f01-live-diag-1",
+          "f01-rule-scripted-20261107t104040z"
+        ],
+        "F04-scripted-0b81741d": [
+          "f04-live-diag-1",
+          "f04-rule-scripted-20261107t104820z"
+        ],
+        "F04-scripted-13aa249d": [
+          "f04-live-diag-1",
+          "f04-rule-scripted-20261107t104820z"
+        ],
+        "F04-scripted-34e008d0": [
+          "f04-live-diag-1",
+          "f04-rule-scripted-20261107t104820z"
+        ],
+        "F04-scripted-835a25e8": [
+          "f04-live-diag-1",
+          "f04-rule-scripted-20261107t104820z"
+        ],
+        "F04-scripted-97c9621a": [
+          "f04-live-diag-1",
+          "f04-rule-scripted-20261107t104820z"
+        ],
+        "F06-live-1": [
+          "f06-live-1",
+          "f06-live-live-20261107t115029z",
+          "f06-live-live-20261108t051825z",
+          "f06-live-live-20261108t052717z"
+        ],
+        "F06-live-2": [
+          "f06-live-1",
+          "f06-live-live-20261107t115029z",
+          "f06-live-live-20261108t051825z",
+          "f06-live-live-20261108t052717z"
+        ],
+        "F06-live-3": [
+          "f06-live-1",
+          "f06-live-live-20261107t115029z",
+          "f06-live-live-20261108t052717z"
+        ],
+        "F06-scripted-05420f6c": [
+          "f06-live-diag-4",
+          "f06-rule-scripted-20261023t161709z",
+          "f06-rule-scripted-20261107t101249z",
+          "f06-rule-scripted-20261107t102944z",
+          "f06-rule-scripted-20261108t124148z",
+          "f06-rule-scripted-20261108t131326z",
+          "f06-rule-scripted-20261108t141710z"
+        ],
+        "F06-scripted-0d38b9b9": [
+          "f06-live-diag-4",
+          "f06-rule-scripted-20261023t161709z",
+          "f06-rule-scripted-20261107t101249z",
+          "f06-rule-scripted-20261107t102944z",
+          "f06-rule-scripted-20261108t124148z",
+          "f06-rule-scripted-20261108t131326z",
+          "f06-rule-scripted-20261108t141710z"
+        ],
+        "F06-scripted-7509cb64": [
+          "f06-live-diag-4",
+          "f06-rule-scripted-20261023t161709z",
+          "f06-rule-scripted-20261107t101249z",
+          "f06-rule-scripted-20261107t102944z",
+          "f06-rule-scripted-20261108t124148z",
+          "f06-rule-scripted-20261108t131326z",
+          "f06-rule-scripted-20261108t141710z"
+        ],
+        "F06-scripted-81484cbc": [
+          "f06-live-diag-4",
+          "f06-rule-scripted-20261023t161709z",
+          "f06-rule-scripted-20261107t101249z",
+          "f06-rule-scripted-20261107t102944z",
+          "f06-rule-scripted-20261108t124148z",
+          "f06-rule-scripted-20261108t131326z",
+          "f06-rule-scripted-20261108t141710z"
+        ],
+        "F06-scripted-b16cfed7": [
+          "f06-live-diag-4",
+          "f06-rule-scripted-20261023t161709z",
+          "f06-rule-scripted-20261107t101249z",
+          "f06-rule-scripted-20261107t102944z",
+          "f06-rule-scripted-20261108t124148z",
+          "f06-rule-scripted-20261108t131326z",
+          "f06-rule-scripted-20261108t141710z"
+        ],
+        "F06-scripted-fd6a948c": [
+          "f06-live-diag-4",
+          "f06-rule-scripted-20261023t161709z",
+          "f06-rule-scripted-20261107t101249z",
+          "f06-rule-scripted-20261107t102944z",
+          "f06-rule-scripted-20261108t124148z",
+          "f06-rule-scripted-20261108t131326z",
+          "f06-rule-scripted-20261108t141710z"
+        ]
+      },
+      "candidate_ids_with_multiple_models": {
+        "F01-scripted-17c59e87": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F01-scripted-4eeb7107": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F01-scripted-575d5aad": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F01-scripted-b0cc1dd7": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F01-scripted-fb8fb0d5": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F04-scripted-0b81741d": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F04-scripted-13aa249d": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F04-scripted-34e008d0": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F04-scripted-835a25e8": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F04-scripted-97c9621a": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F06-live-1": [
+          "qwen2.5-coder:1.5b",
+          "qwen2.5-coder:7b"
+        ],
+        "F06-live-2": [
+          "qwen2.5-coder:1.5b",
+          "qwen2.5-coder:7b"
+        ],
+        "F06-live-3": [
+          "qwen2.5-coder:1.5b",
+          "qwen2.5-coder:7b"
+        ],
+        "F06-scripted-05420f6c": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F06-scripted-0d38b9b9": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F06-scripted-7509cb64": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F06-scripted-81484cbc": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F06-scripted-b16cfed7": [
+          "null",
+          "qwen2.5-coder:7b"
+        ],
+        "F06-scripted-fd6a948c": [
+          "null",
+          "qwen2.5-coder:7b"
+        ]
+      },
+      "has_patch_sha256_field": false,
+      "modes": {
+        "live/live": 17,
+        "live/scripted": 16,
+        "rule/scripted": 46
+      },
+      "decisions": {
+        "AUTO_APPLY": 26,
+        "ESCALATE": 3,
+        "REJECT": 50
+      },
+      "approval_sources": {
+        "human_cli": 1,
+        "null": 78
+      },
+      "deployed_rows": 3,
+      "rolled_back_rows": 0,
+      "run_ids": [
+        "f01-live-1",
+        "f01-live-diag-1",
+        "f01-rule-scripted-20261107t104040z",
+        "f04-live-1",
+        "f04-live-diag-1",
+        "f04-rule-scripted-20261107t104820z",
+        "f06-live-1",
+        "f06-live-diag-4",
+        "f06-live-live-20261107t115029z",
+        "f06-live-live-20261108t051825z",
+        "f06-live-live-20261108t052717z",
+        "f06-rule-scripted-20261023t161709z",
+        "f06-rule-scripted-20261107t101249z",
+        "f06-rule-scripted-20261107t102944z",
+        "f06-rule-scripted-20261108t124148z",
+        "f06-rule-scripted-20261108t131326z",
+        "f06-rule-scripted-20261108t141710z"
+      ]
+    }
+  },
+  "pilot_report_vs_evidence": {
+    "checked": true,
+    "report_evidence_sha_prefix": "616341328717",
+    "report_rows": 31,
+    "current_evidence_sha_prefix": "105d8014929d",
+    "current_rows": 79,
+    "stale": true
+  },
+  "runs": [
+    {
+      "run_id": "f01-live-1",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 3,
+      "rows_in_aggregate": 3,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f01-live-diag-1",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 5,
+      "rows_in_aggregate": 5,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f01-live-live-20261107t110315z",
+      "files": [
+        "baseline.json",
+        "error.json",
+        "faulty_deploy.json",
+        "incident.json",
+        "run.json"
+      ],
+      "evidence_rows": null,
+      "error": {
+        "step": 4,
+        "title": "diagnose (live) and draft patches (live)",
+        "type": "ProviderError",
+        "message": "live mode needs environment variable(s) LLM_BASE_URL, LLM_MODEL (they also form the request key)"
+      },
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f01-replay-1",
+      "files": [
+        "baseline.json",
+        "error.json",
+        "faulty_deploy.json",
+        "incident.json",
+        "run.json"
+      ],
+      "evidence_rows": null,
+      "error": {
+        "step": 4,
+        "title": "diagnose (replay) and draft patches (replay)",
+        "type": "ProviderError",
+        "message": "replay cache miss: <path>/4f8d15cc9b05ea220bfcf41389be65827ef554043f5f77c0b6090eccfbb3702e.json not found (provider=http://localhost:11434/v1, model=qwen2.5-coder:7b, temperature=0.2). Record it first"
+      },
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f01-rule-scripted-20261107t104040z",
+      "files": [
+        "baseline.json",
+        "choice.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json",
+        "summary.json"
+      ],
+      "evidence_rows": 5,
+      "rows_in_aggregate": 5,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f04-live-1",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 3,
+      "rows_in_aggregate": 3,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f04-live-diag-1",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 5,
+      "rows_in_aggregate": 5,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f04-replay-1",
+      "files": [
+        "baseline.json",
+        "error.json",
+        "faulty_deploy.json",
+        "incident.json",
+        "run.json"
+      ],
+      "evidence_rows": null,
+      "error": {
+        "step": 4,
+        "title": "diagnose (replay) and draft patches (replay)",
+        "type": "ProviderError",
+        "message": "replay cache miss: <path>/46abfc79680814757b79b0bb697d5c75c713ce2f5cf970c4d376a224d0caa1d5.json not found (provider=http://localhost:11434/v1, model=qwen2.5-coder:7b, temperature=0.2). Record it first"
+      },
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f04-rule-scripted-20261107t104820z",
+      "files": [
+        "baseline.json",
+        "choice.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json",
+        "summary.json"
+      ],
+      "evidence_rows": 5,
+      "rows_in_aggregate": 5,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-live-1",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 3,
+      "rows_in_aggregate": 3,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-live-diag-1",
+      "files": [
+        "run.json"
+      ],
+      "evidence_rows": null,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-live-diag-2",
+      "files": [
+        "error.json",
+        "run.json"
+      ],
+      "evidence_rows": null,
+      "error": {
+        "step": 2,
+        "title": "baseline running and healthy",
+        "type": "DeployError",
+        "message": "docker build of order-service:baseline failed:"
+      },
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-live-diag-3",
+      "files": [
+        "error.json",
+        "run.json"
+      ],
+      "evidence_rows": null,
+      "error": {
+        "step": 2,
+        "title": "baseline running and healthy",
+        "type": "DeployError",
+        "message": "docker build of order-service:baseline failed:"
+      },
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-live-diag-4",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 6,
+      "rows_in_aggregate": 6,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-live-live-20261107t114654z",
+      "files": [
+        "error.json",
+        "run.json"
+      ],
+      "evidence_rows": null,
+      "error": {
+        "step": 2,
+        "title": "baseline running and healthy",
+        "type": "DeployError",
+        "message": "docker build of order-service:baseline failed:"
+      },
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-live-live-20261107t115029z",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 3,
+      "rows_in_aggregate": 3,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-live-live-20261108t051825z",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 2,
+      "rows_in_aggregate": 2,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-live-live-20261108t052717z",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 3,
+      "rows_in_aggregate": 3,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-replay-1",
+      "files": [
+        "baseline.json",
+        "error.json",
+        "faulty_deploy.json",
+        "incident.json",
+        "run.json"
+      ],
+      "evidence_rows": null,
+      "error": {
+        "step": 4,
+        "title": "diagnose (replay) and draft patches (replay)",
+        "type": "ProviderError",
+        "message": "replay cache miss: <path>/94f9106c7dc60f5304fe2548e61ebd10f1e9edec2c4436f6f9829b0010d8bfa3.json not found (provider=http://localhost:11434/v1, model=qwen2.5-coder:7b, temperature=0.2). Record it first"
+      },
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-rule-scripted-20261023t141305z",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 6,
+      "rows_in_aggregate": 0,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-rule-scripted-20261023t161709z",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 6,
+      "rows_in_aggregate": 6,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-rule-scripted-20261023t163207z",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": null,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-rule-scripted-20261026t130925z",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": null,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-rule-scripted-20261107t101249z",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 6,
+      "rows_in_aggregate": 6,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-rule-scripted-20261107t102944z",
+      "files": [
+        "baseline.json",
+        "choice.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json",
+        "summary.json"
+      ],
+      "evidence_rows": 6,
+      "rows_in_aggregate": 6,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-rule-scripted-20261108t124148z",
+      "files": [
+        "baseline.json",
+        "choice.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json",
+        "summary.json"
+      ],
+      "evidence_rows": 6,
+      "rows_in_aggregate": 6,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-rule-scripted-20261108t131326z",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 6,
+      "rows_in_aggregate": 6,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    },
+    {
+      "run_id": "f06-rule-scripted-20261108t141710z",
+      "files": [
+        "baseline.json",
+        "diagnosis.json",
+        "evidence.jsonl",
+        "faulty_deploy.json",
+        "incident.json",
+        "patches.json",
+        "run.json"
+      ],
+      "evidence_rows": 6,
+      "rows_in_aggregate": 6,
+      "run_json_keys": [
+        "candidate",
+        "config",
+        "deploy_each",
+        "diag_mode",
+        "diag_samples",
+        "fault_id",
+        "gates_only",
+        "patch_mode",
+        "run_id",
+        "started_at"
+      ]
+    }
+  ]
+}

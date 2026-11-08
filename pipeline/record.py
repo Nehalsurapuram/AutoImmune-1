@@ -18,6 +18,7 @@ excludes such rows.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,7 +51,8 @@ EVIDENCE_SCHEMA = {
                  "tier", "decision", "reasons", "deployed", "rolled_back", "awaiting_review", "recovery_s",
                  "approval_source", "invalid", "timestamp",
                  # Phase 3 additions (nullable for backward compatibility with scripted rows)
-                 "diag_samples", "samples_disagree", "top1_hit", "top3_hit", "model", "llm_attempts", "apply_error"],
+                 "diag_samples", "samples_disagree", "top1_hit", "top3_hit", "model", "llm_attempts", "apply_error",
+                 "schema_version", "patch_sha256"],
     "properties": {
         "run_id": {"type": "string", "minLength": 1},
         "fault_id": {"type": "string", "pattern": "^F[0-9]{2}$"},
@@ -96,8 +98,14 @@ EVIDENCE_SCHEMA = {
         "llm_attempts": {"type": ["integer", "null"], "minimum": 1},
         # apply_error: first non-null patch apply_error (null if patch applied cleanly or not checked)
         "apply_error": {"type": ["string", "null"]},
+        # S0 additions (audit F-05/F-06). Rows written before schema_version 2 lack both fields.
+        # schema_version: 2 from S0 on. patch_sha256: SHA-256 of the candidate diff text (UTF-8, as drafted),
+        # so the same id with different content, or the same content under different ids, is detectable.
+        "schema_version": {"const": 2},
+        "patch_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
     },
 }
+SCHEMA_VERSION = 2
 
 
 class InvalidEvidenceRow(ValueError):
@@ -159,7 +167,13 @@ def build_row(*, run_id: str, fault_id: str, gates: dict, diagnosis, patch, patc
         "model": model,
         "llm_attempts": llm_attempts,
         "apply_error": apply_error,
+        "schema_version": SCHEMA_VERSION,
+        "patch_sha256": patch_sha256(_get(patch, "diff")),
     }
+
+
+def patch_sha256(diff: str | None) -> str | None:
+    return None if diff is None else hashlib.sha256(diff.encode("utf-8")).hexdigest()
 
 
 def validate_row(row: dict) -> None:

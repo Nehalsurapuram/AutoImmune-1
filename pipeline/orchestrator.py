@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pipeline import deploy, detector, record, sandbox, terminal
+from pipeline import deploy, detector, provenance, record, sandbox, terminal
 from pipeline.decide import decide, patch_meta
 from pipeline.providers import get_provider
 
@@ -164,10 +164,19 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
     extra_note = "" if {diag_mode, patch_mode} & {"live", "replay"} else "(no LLM: rule/scripted results)"
     terminal.print_header(run_id, fault, diag_mode, patch_mode, extra_note)
 
-    _write(run_dir / "run.json", {"run_id": run_id, "fault_id": fault, "diag_mode": diag_mode,
-                                  "patch_mode": patch_mode, "candidate": candidate, "deploy_each": deploy_each,
-                                  "diag_samples": n_samples, "gates_only": gates_only,
-                                  "started_at": stamp, "config": cfg})
+    run_meta = {"run_id": run_id, "fault_id": fault, "diag_mode": diag_mode,
+                "patch_mode": patch_mode, "candidate": candidate, "deploy_each": deploy_each,
+                "diag_samples": n_samples, "gates_only": gates_only,
+                "started_at": stamp, "ended_at": None, "outcome": "running", "config": cfg,
+                "provenance": provenance.collect(cfg)}
+    _write(run_dir / "run.json", run_meta)
+
+    def finish(outcome: str, error: str | None = None) -> None:
+        """Close run.json: every run ends as completed, gates_only or error, never silently."""
+        run_meta.update(ended_at=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ"), outcome=outcome,
+                        error=error, n_candidates=len(candidates))
+        _write(run_dir / "run.json", run_meta)
+
     candidates: list[dict] = []
     releases: dict[str, dict] = {}
     approvals: dict[str, dict] = {}
@@ -255,6 +264,7 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
                     record.append_row(row)
                     record.append_row(row, run_dir / "evidence.jsonl")
                 print(f"  {len(candidates)} rows -> results/evidence.jsonl and runs/{run_id}/evidence.jsonl")
+                finish("gates_only")
                 return {"run_id": run_id, "fault_id": fault, "diag_mode": diag_mode, "patch_mode": patch_mode,
                         "gates_only": True, "candidates": [
                             {"candidate_id": c["patch"].candidate_id,
@@ -317,6 +327,7 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
         err = StepError(state["step"], state["title"], exc)
         _write(run_dir / "error.json", {"step": state["step"], "title": state["title"], "error": str(exc),
                                         "type": type(exc).__name__, "traceback": traceback.format_exc()})
+        finish("error", str(err))
         _restore_baseline(cfg, step)
         raise err from exc
 
@@ -333,6 +344,7 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
                "oracle_localisation": diagnosis.oracle_localisation, "choice": sel.note,
                "seconds": round(time.monotonic() - t0), "candidates": rows}
     _write(run_dir / "summary.json", summary)
+    finish("completed")
 
     # Detailed counts for execution summary
     val_passed = sum(1 for c in candidates if all(c["gates"]["gates"][g]["status"] == "pass" for g in GATES))

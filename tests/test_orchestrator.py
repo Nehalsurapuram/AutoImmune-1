@@ -131,6 +131,14 @@ def test_full_run_deploy_each_restores_faulty_build_between_candidates(faked, ca
     assert len(rows) == 12                                      # 6 rows, each to results/ and to runs/<id>/
     deployed = sorted(r["deployed"] for r, p in rows if p is None)
     assert deployed == [False, False, False, True, True, True]
+    # S0 provenance: run.json is closed with an outcome; rows carry schema_version and a distinct patch hash
+    meta = json.loads((tmp / "runs" / "t1" / "run.json").read_text(encoding="utf-8"))
+    assert meta["outcome"] == "completed" and meta["ended_at"] and meta["n_candidates"] == 6
+    prov = meta["provenance"]
+    assert len(prov["code_sha256"]) == 64 and len(prov["prompts_sha256"]) == 64 and "git_dirty" in prov
+    results_rows = [r for r, p in rows if p is None]
+    assert {r["schema_version"] for r in results_rows} == {2}
+    assert len({r["patch_sha256"] for r in results_rows}) == 6
 
 
 def test_failing_step_stops_with_the_real_error_and_restores_baseline(faked, monkeypatch):
@@ -142,6 +150,8 @@ def test_failing_step_stops_with_the_real_error_and_restores_baseline(faked, mon
     err = json.loads((tmp / "runs" / "t2" / "error.json").read_text(encoding="utf-8"))
     assert err["step"] == 3 and "no incident" in err["error"]
     assert calls[-1] == ("switch", "order-service:baseline") and rows == []
+    meta = json.loads((tmp / "runs" / "t2" / "run.json").read_text(encoding="utf-8"))
+    assert meta["outcome"] == "error" and "no incident" in meta["error"] and meta["ended_at"]
 
 
 # --------------------------------------------------------------------------- summary wording (audit F-18)

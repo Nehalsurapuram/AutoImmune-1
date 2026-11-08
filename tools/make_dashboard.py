@@ -19,6 +19,9 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import analyse  # noqa: E402  (repo root)
+
 
 def esc(val: object) -> str:
     """Safe HTML escaping handling None and non-string types."""
@@ -64,19 +67,9 @@ def determine_first_stop(u: dict) -> str:
 def build_dashboard_data(repo_root: Path, evidence_path: Path, results_dir: Path, docs_dir: Path) -> dict:
     evidence_rows = parse_evidence(evidence_path)
     
-    # Analysis units: latest valid row per (fault_id, candidate_id)
-    latest_units: dict[tuple[str, str], dict] = {}
-    for r in evidence_rows:
-        if r.get("invalid"):
-            continue
-        key = (r.get("fault_id", "unknown"), r.get("candidate_id", "unknown"))
-        ts = r.get("timestamp", "")
-        run = r.get("run_id", "")
-        if key not in latest_units or (ts, run) > (latest_units[key].get("timestamp", ""), latest_units[key].get("run_id", "")):
-            latest_units[key] = r
-    
-    units = [latest_units[k] for k in sorted(latest_units)]
-    
+    # Analysis units: exactly the units analyse.py reports (scripted per fault x file x diag_mode; LLM per run x id)
+    units = analyse.units_of(evidence_rows)
+
     # Read CSV reports
     llm_diagnosis = parse_csv(results_dir / "llm_diagnosis.csv")
     llm_units = parse_csv(results_dir / "llm_units.csv")
@@ -89,8 +82,9 @@ def build_dashboard_data(repo_root: Path, evidence_path: Path, results_dir: Path
     # Executive overview metrics
     distinct_faults = sorted(set(r.get("fault_id") for r in evidence_rows if r.get("fault_id")))
     decision_counts = Counter(r.get("decision", "UNKNOWN") for r in units)
-    deployed_count = sum(1 for r in units if r.get("deployed") is True)
-    rollback_count = sum(1 for r in units if r.get("rolled_back") is True)
+    # deployments and rollbacks are events: count every valid row, not one per unit
+    deployed_count = sum(1 for r in evidence_rows if not r.get("invalid") and r.get("deployed") is True)
+    rollback_count = sum(1 for r in evidence_rows if not r.get("invalid") and r.get("rolled_back") is True)
     
     approval_counts = Counter(r.get("approval_source") for r in evidence_rows if r.get("approval_source"))
     diag_modes = Counter(r.get("diag_mode") for r in units)
@@ -128,150 +122,13 @@ def build_dashboard_data(repo_root: Path, evidence_path: Path, results_dir: Path
         fid = u.get("fault_id", "unknown")
         fault_groups.setdefault(fid, []).append(u)
     
-    # Traceability acceptance checks A1-A10
-    acceptance_checks = [
-        {
-            "id": "A1",
-            "name": "One command full loop",
-            "criterion": "One command runs detection, diagnosis, candidate generation, gates, decision, deployment, rollback on 3 faults.",
-            "status": "DONE NOT PROVEN",
-            "evidence": "Pipeline CLI fully implemented (`pipeline run`); verified with `--gates-only` across F01, F04, F06 in Phase 6.",
-            "limitation": "Full unassisted end-to-end deployment run with live Docker requires active verification (runs were executed with --gates-only).",
-        },
-        {
-            "id": "A2",
-            "name": "Detection within 60s",
-            "criterion": "Incident raised within 60 s; none raised in 5 min healthy baseline.",
-            "status": "DONE NOT PROVEN",
-            "evidence": "Detector logic & metrics verified in `tests/test_detector.py` and `tests/test_detector_metrics.py`.",
-            "limitation": "Full multi-minute continuous live observation run across all faults requires production deployment verification.",
-        },
-        {
-            "id": "A3",
-            "name": "Diagnosis ≤3 causes",
-            "criterion": "Valid JSON diagnosis artifact with ≤3 ranked causes; provider_mode recorded; top1/top3 hits tracked.",
-            "status": "PARTIALLY PROVEN",
-            "evidence": "Rule provider tested in `test_providers.py`. Live pilot runs recorded in `results/llm_diagnosis.csv`: F01 (8/8 top-1), F06 (9/9 top-1).",
-            "limitation": "F04 live localization failed completely (0/8 top-1 and top-3 hits). Requires prompt/retrieval investigation.",
-        },
-        {
-            "id": "A4",
-            "name": "Candidate diff generation",
-            "criterion": "Drafts 3 candidate diffs per incident; each applies cleanly or is rejected with apply_error logged.",
-            "status": "PARTIALLY PROVEN",
-            "evidence": "Scripted pool (16 candidates) applies cleanly. Live provider generates diffs and accurately logs `apply_error` upon rejection.",
-            "limitation": "Small local model (`qwen2.5-coder:7b`) generated diffs without required `---` and `+++` file headers; 0 of 9 live patches applied cleanly.",
-        },
-        {
-            "id": "A5",
-            "name": "Isolated Docker sandbox",
-            "criterion": "Docker sandbox executes with `--network none`; outbound network requests fail.",
-            "status": "DONE AND PROVEN",
-            "evidence": "Enforced in `pipeline/sandbox.py:run_gates()` and tested by `tests/test_sandbox.py::test_no_network`.",
-            "limitation": "Requires Docker daemon to be running; local environments without Docker cannot run sandbox gates.",
-        },
-        {
-            "id": "A6",
-            "name": "Gate diversity (V0–V3)",
-            "criterion": "V0, V1, V2, and V3 each catch and stop distinct candidate failure modes.",
-            "status": "DONE AND PROVEN",
-            "evidence": "V0 caught all 9 live diffs (syntax/header); V1 caught 3 ineffective patches; V2 caught 3 regressive patches; V3 caught 2 insecure patches (SQL concatenation).",
-            "limitation": "F06 candidate `F06-scripted-05420f6c` experienced Docker EOF tooling error on V2, demonstrating that infrastructure errors must be tracked separately from code quality.",
-        },
-        {
-            "id": "A7",
-            "name": "Tiered decision engine",
-            "criterion": "decision.json shows risk tier, decision (AUTO_APPLY, ESCALATE, REJECT), and explicit reason strings.",
-            "status": "DONE AND PROVEN",
-            "evidence": "Implemented in `pipeline/decide.py` and comprehensively tested across all rule branches in `tests/test_decide.py`.",
-            "limitation": "Empirical risk calibration (logistic regression) was explicitly deferred to research layer by project plan.",
-        },
-        {
-            "id": "A8",
-            "name": "Human approval path",
-            "criterion": "ESCALATE prompts human operator via CLI; AUTO_APPLY applies automatically without prompt.",
-            "status": "DONE NOT PROVEN",
-            "evidence": "Interactive CLI flow implemented in `deploy.py:approve_cli()`; unit tested in `tests/test_deploy.py`.",
-            "limitation": "Current pilot evidence rows recorded 0 human CLI approvals (all live runs were gates-only non-interactive).",
-        },
-        {
-            "id": "A9",
-            "name": "Automated rollback",
-            "criterion": "Health window catches latency breach (p95 > 2s) or probe mismatch and rolls back image.",
-            "status": "DONE NOT PROVEN",
-            "evidence": "Rollback logic implemented in `deploy.py:release()` and unit tested in `tests/test_deploy.py`. Staged candidate S3b demonstrated latency breach.",
-            "limitation": "Live pilot evidence rows recorded 0 deployments (`deployed: false`), so live automated rollback was not exercised in this batch.",
-        },
-        {
-            "id": "A10",
-            "name": "Evidence traceability",
-            "criterion": "`analyse.py` regenerates pilot table and reports deterministically from `evidence.jsonl`.",
-            "status": "DONE AND PROVEN",
-            "evidence": "Verified in `tests/test_analyse.py::test_output_is_reproducible_byte_for_byte`. Output is byte-identical.",
-            "limitation": "Current evidence candidates are unlabelled in `labels.json`, resulting in N/A policy metrics in `policies.csv` until two-person review is completed.",
-        },
-    ]
-    
-    # Verified limitations
-    known_limitations = [
-        {
-            "title": "Historical Full Test Suite Baseline",
-            "category": "Historical Verification",
-            "description": "Recorded full test runs: 170 passed (Phase 5 baseline) and 174 passed (with dashboard tests). Current workspace environment verified 158 non-docker unit tests passing in ~5-10s. Full Docker sandbox suite requires active local Docker daemon.",
-            "badge": "Historical (Pending Re-run)",
-            "severity": "info",
-        },
-        {
-            "title": "Live Patch Application Failure (0 of 9 Applied)",
-            "category": "LLM Patch Generation",
-            "description": "All 9 live patch attempts produced by `qwen2.5-coder:7b` failed at V0 patch application. Generated diffs lacked the standard `---` and `+++` unified diff headers required by `git apply`.",
-            "badge": "Observed Defect",
-            "severity": "warning",
-        },
-        {
-            "title": "F06 Offline Replay Blocked by Missing Cache Entry",
-            "category": "Replay Integrity",
-            "description": "F06 replay run `F06-replay-1` stopped with `ProviderError` due to missing cache entry `94f9106c7dc60f5304fe2548e61ebd10f1e9edec2c4436f6f9829b0010d8bfa3.json`. Per replay rules, cache misses are blockers and cannot be bypassed.",
-            "badge": "Active Blocker",
-            "severity": "danger",
-        },
-        {
-            "title": "F01 and F04 Offline Replay Unverified",
-            "category": "Replay Integrity",
-            "description": "Offline cache replay verification has not yet been executed for faults F01 and F04 in the recorded pilot session.",
-            "badge": "Unverified",
-            "severity": "warning",
-        },
-        {
-            "title": "F06 Docker/Tooling Tool Error (Candidate F06-scripted-05420f6c)",
-            "category": "Infrastructure Blocker",
-            "description": "Candidate `F06-scripted-05420f6c` failed V2 due to a Docker unexpected EOF/tool error. This is an infrastructure tool error, NOT a valid test failure or patch quality verdict, and is never counted as a pass.",
-            "badge": "Tool Error",
-            "severity": "danger",
-        },
-        {
-            "title": "F04 Diagnosis Localisation Failed (0/8 Hits)",
-            "category": "Model Accuracy",
-            "description": "Pilot evaluation for F04 showed 0/8 top-1 hits and 0/8 top-3 hits (0.0% accuracy, Wilson 95% CI: [0.0%, 32.4%]). The model completely missed the root cause file for F04.",
-            "badge": "Critical Finding",
-            "severity": "danger",
-        },
-        {
-            "title": "Unlabelled Candidates & Zero Human Approvals",
-            "category": "Data & Governance",
-            "description": "All 25 units in `evidence.jsonl` are currently unlabelled in ground-truth labels.json, and zero human approvals were requested or recorded in `--gates-only` mode. Consequently, policy safety rates in `policies.csv` show 0/0 (N/A).",
-            "badge": "Governance",
-            "severity": "info",
-        },
-        {
-            "title": "Metadata / Configuration Discrepancy in F06",
-            "category": "Traceability",
-            "description": "In run `f06-live-diag-4`, the run-level metadata records `diag_samples: 1` while the nested configuration artifact records `diag_samples: 3`. This discrepancy remains recorded until confirmed.",
-            "badge": "Audit Discrepancy",
-            "severity": "warning",
-        },
-    ]
-    
+    # Acceptance checks and limitations come from one data file, never from this code (audit: stale claims)
+    acc_path = docs_dir / "audit" / "acceptance.json"
+    acc = json.loads(acc_path.read_text(encoding="utf-8")) if acc_path.is_file() else {}
+    acceptance_checks = acc.get("acceptance_checks", [])
+    known_limitations = acc.get("known_limitations", [])
+    test_suite = acc.get("test_suite", {"badge": "unknown", "text": f"{acc_path} not found"})
+
     return {
         "evidence_rows": evidence_rows,
         "units": units,
@@ -295,6 +152,12 @@ def build_dashboard_data(repo_root: Path, evidence_path: Path, results_dir: Path
         "unsafe_first_stop": unsafe_first_stop,
         "acceptance_checks": acceptance_checks,
         "known_limitations": known_limitations,
+        "test_suite": test_suite,
+        "labels_found": bool(list((repo_root / "faults").glob("*/candidates/labels.json"))),
+        "acceptance_as_of": acc.get("as_of", "unknown"),
+        "llm_patch_utility": parse_csv(results_dir / "llm_patch_utility.csv"),
+        "deployments": parse_csv(results_dir / "deployments.csv"),
+        "run_ledger": parse_csv(results_dir / "runs.csv"),
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
     }
 
@@ -839,7 +702,7 @@ def render_html(data: dict) -> str:
         "        <div class=\"card\">",
         "          <div class=\"card-title\">Actual Deployments</div>",
         f"          <div class=\"card-value\" style=\"color: #64748b;\">{deployed_count}</div>",
-        "          <div class=\"card-subtext\"><code>--gates-only</code> runs (0 deployed)</div>",
+        "          <div class=\"card-subtext\">deployment events in evidence (see deployments.csv)</div>",
         "        </div>",
         "        <div class=\"card\">",
         "          <div class=\"card-title\">Actual Rollbacks</div>",
@@ -867,7 +730,7 @@ def render_html(data: dict) -> str:
         f"                <tr><td>Patch Modes</td><td><strong>scripted</strong>: {data['patch_modes'].get('scripted', 0)}, <strong>live</strong>: {data['patch_modes'].get('live', 0)}</td></tr>",
         f"                <tr><td>LLM Models</td><td><strong>qwen2.5-coder:7b</strong>: {data['models'].get('qwen2.5-coder:7b', 0)}</td></tr>",
         "                <tr><td>Analysis Unit</td><td>Latest valid row per (fault_id, candidate_id)</td></tr>",
-        "                <tr><td>Label Status</td><td>25 unlabelled (draft review pending)</td></tr>",
+        f"                <tr><td>Label Status</td><td>{'see pilot_report.md' if data['labels_found'] else 'no labels.json found: every unit unlabelled'}</td></tr>",
         "              </tbody>",
         "            </table>",
         "          </div>",
@@ -891,10 +754,10 @@ def render_html(data: dict) -> str:
         "      <div class=\"card\" style=\"margin-bottom: 20px;\">",
         "        <div style=\"display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;\">",
         "          <div style=\"font-weight: 600; font-size: 15px; color: var(--text-main);\">Unit & Sandbox Test Suite Status</div>",
-        "          <span class=\"badge badge-pass\">158 Unit Tests Passing</span>",
+        f"          <span class=\"badge badge-skip\">as of {esc(data['acceptance_as_of'])}</span>",
         "        </div>",
         "        <p style=\"font-size: 13.5px; color: var(--text-muted);\">",
-        "          Workspace environment verified 158 non-docker unit tests passing deterministically. Full test runs record 170 passed (baseline) and 174 passed with dashboard tests. Docker sandbox isolation tests require a running Docker daemon.",
+        f"          {esc(data['test_suite'].get('text', ''))} (source: docs/audit/acceptance.json)",
         "        </p>",
         "      </div>",
         "      <div style=\"margin-bottom: 16px;\">",
@@ -903,12 +766,8 @@ def render_html(data: dict) -> str:
     
     for chk in data["acceptance_checks"]:
         st = chk["status"]
-        if "DONE AND PROVEN" in st:
-            st_badge = "<span class=\"badge badge-pass\">PASS &bull; PROVEN</span>"
-        elif "PARTIALLY" in st:
-            st_badge = "<span class=\"badge badge-warn\">PARTIAL</span>"
-        else:
-            st_badge = "<span class=\"badge badge-skip\">NOT PROVEN</span>"
+        badge_class = {"PASS": "pass", "PARTIAL": "warn", "FAIL": "reject"}.get(st, "skip")
+        st_badge = f"<span class=\"badge badge-{badge_class}\">{esc(st)}</span>"
             
         limitation_block = f"<div class=\"test-limitation\"><strong>Limitation / Requirement:</strong> {esc(chk['limitation'])}</div>" if chk.get("limitation") else ""
         html_lines += [
@@ -1012,7 +871,7 @@ def render_html(data: dict) -> str:
         "        Live LLM candidates evaluate generative capabilities. They are tracked in separate panels and never combined.",
         "      </div>",
         "      <div style=\"font-weight: 600; font-size: 15px; color: var(--text-main); margin-bottom: 6px;\">Panel 1 — Generative Live LLM Patches (diag_mode=live, patch_mode=live)</div>",
-        "      <p class=\"section-subtitle\">Observed results for candidates drafted live by <code>qwen2.5-coder:7b</code></p>",
+        "      <p class=\"section-subtitle\">Observed results for candidates drafted live by: " + (", ".join(f"<code>{esc(m)}</code>" for m in sorted(data["models"])) or "no model") + "</p>",
         "      <div class=\"table-container\">",
         "        <table>",
         "          <thead>",
@@ -1048,8 +907,10 @@ def render_html(data: dict) -> str:
         "        </table>",
         "      </div>",
         "      <div class=\"callout\" style=\"margin-bottom: 24px;\">",
-        "        <strong>Root Cause of 0 of 9 Live Patch Application:</strong> Live diffs produced by <code>qwen2.5-coder:7b</code> lacked standard <code>---</code> and <code>+++</code> headers. ",
-        "        <code>git apply --check</code> rejected all 9 patches immediately at Gate V0 (0 of 9 applied cleanly). This is an honest empirical limitation.",
+        "        <strong>Live patch utility per model (results/llm_patch_utility.csv):</strong> "
+        + ("; ".join(f"<code>{esc(r['model'])}</code>: {esc(r['applied_cleanly'])}/{esc(r['attempts'])} applied cleanly, "
+                     f"{esc(r['v1_pass'])}/{esc(r['attempts'])} passed V1, {esc(r['all_gates_pass'])}/{esc(r['attempts'])} passed all gates"
+                     for r in data["llm_patch_utility"] if r.get("fault") == "all") or "no live attempts recorded") + ".",
         "      </div>",
         "",
         "      <div style=\"font-weight: 600; font-size: 15px; color: var(--text-main); margin-bottom: 6px;\">Panel 2 — Live LLM Diagnosis Accuracy (from results/llm_diagnosis.csv)</div>",
@@ -1069,7 +930,7 @@ def render_html(data: dict) -> str:
         m = row.get("model", "")
         t1_k = row.get("top1_k", "0")
         t1_n = row.get("top1_n", "0")
-        t1_rate = f"{float(row.get('top1_rate', 0))*100:.1f}%"
+        t1_rate = f"{float(row.get('top1_rate') or 0)*100:.1f}%"
         t1_low = f"{float(row.get('top1_low', 0))*100:.1f}%"
         t1_high = f"{float(row.get('top1_high', 0))*100:.1f}%"
         t3_k = row.get("top3_k", "0")
@@ -1077,7 +938,10 @@ def render_html(data: dict) -> str:
         t3_rate = f"{float(row.get('top3_rate', 0))*100:.1f}%"
         t3_low = f"{float(row.get('top3_low', 0))*100:.1f}%"
         t3_high = f"{float(row.get('top3_high', 0))*100:.1f}%"
-        note = "Perfect localization" if fid in ("F01", "F06") else "<strong style='color:#991b1b;'>Localization failure (0/8)</strong>"
+        k1, n1 = int(t1_k or 0), int(t1_n or 0)
+        note = ("not evaluated" if n1 == 0 else
+                f"<strong style='color:#991b1b;'>missed in all {n1} runs</strong>" if k1 == 0 else
+                f"hit in all {n1} runs (small n)" if k1 == n1 else f"hit in {k1} of {n1} runs")
         html_lines.append(
             f"            <tr>"
             f"<td><strong>{esc(fid)}</strong></td>"
@@ -1242,7 +1106,7 @@ def render_html(data: dict) -> str:
         f"            <span style=\"color: #991b1b;\">{data['gate_stats']['V2']['statuses'].get('fail', 0)} Fail</span> / ",
         f"            <span style=\"color: #d97706;\">{data['gate_stats']['V2']['statuses'].get('error', 0)} Err</span>",
         "          </div>",
-        "          <div class=\"card-subtext\">1 Docker EOF tooling error</div>",
+        f"          <div class=\"card-subtext\">errors are tool/infrastructure failures, never passes</div>",
         "        </div>",
         "        <div class=\"card\">",
         "          <div class=\"card-title\">Gate V3 — Semgrep Analysis</div>",
@@ -1299,7 +1163,7 @@ def render_html(data: dict) -> str:
     html_lines += [
         f"            <tr><td><strong>Gate V0 (Compile / Apply)</strong></td><td><strong>{v0_cnt}</strong></td><td>{v0_pct}</td><td>Unified diff syntax error (missing <code>---</code> and <code>+++</code> headers)</td><td>Halted immediately; V1–V3 marked <code>not_run</code></td></tr>",
         f"            <tr><td><strong>Gate V1 (Target Test)</strong></td><td><strong>{v1_cnt}</strong></td><td>{v1_pct}</td><td>Ineffective patches; targeted reproducer test fails</td><td>Halted immediately; V2–V3 marked <code>not_run</code></td></tr>",
-        f"            <tr><td><strong>Gate V2 (Regression Suite)</strong></td><td><strong>{v2_cnt}</strong></td><td>{v2_pct}</td><td>3 regressive test failures + 1 Docker EOF tooling error</td><td>Halted immediately; V3 marked <code>not_run</code></td></tr>",
+        f"            <tr><td><strong>Gate V2 (Regression Suite)</strong></td><td><strong>{v2_cnt}</strong></td><td>{v2_pct}</td><td>{data['gate_stats']['V2']['statuses'].get('fail', 0)} test failures + {data['gate_stats']['V2']['statuses'].get('error', 0)} tool errors</td><td>Halted immediately; V3 marked <code>not_run</code></td></tr>",
         f"            <tr><td><strong>Gate V3 (Semgrep Security)</strong></td><td><strong>{v3_cnt}</strong></td><td>{v3_pct}</td><td>Insecure code; introduced new high-severity findings (SQL concatenation)</td><td>REJECT (decision engine)</td></tr>",
         f"            <tr style=\"background: #ecfdf5;\"><td><strong style=\"color:#065f46;\">Survived All Gates (V0–V3)</strong></td><td><strong style=\"color:#065f46;\">{surv_cnt}</strong></td><td>{surv_pct}</td><td>Clean patch passing compilation, reproducer, regression, and Semgrep</td><td>6 AUTO_APPLY, 1 ESCALATE (diff limit)</td></tr>",
         "          </tbody>",
@@ -1353,10 +1217,10 @@ def render_html(data: dict) -> str:
         "            <table>",
         "              <thead><tr><th>Source Type</th><th>Recorded In Evidence</th><th>Definition</th></tr></thead>",
         "              <tbody>",
-        "                <tr><td><strong>human_cli</strong></td><td>0</td><td>Interactive CLI prompt (operator typed 'approve')</td></tr>",
-        "                <tr><td><strong>human_relayed</strong></td><td>0</td><td>Human approval relayed via orchestration tool</td></tr>",
-        "                <tr><td><strong>scripted_test</strong></td><td>0</td><td>Automated fixture (never counted as human review)</td></tr>",
-        "                <tr><td><strong>None (gates-only)</strong></td><td>25</td><td>Runs halted at decision gate; no deploy requested</td></tr>",
+        f"                <tr><td><strong>human_cli</strong></td><td>{data['approval_counts'].get('human_cli', 0)}</td><td>Interactive CLI prompt (operator answered at the terminal)</td></tr>",
+        f"                <tr><td><strong>human_relayed</strong></td><td>{data['approval_counts'].get('human_relayed', 0)}</td><td>Human decision relayed via a tool</td></tr>",
+        f"                <tr><td><strong>scripted_test</strong></td><td>{data['approval_counts'].get('scripted_test', 0)}</td><td>Automated fixture (never counted as human review)</td></tr>",
+        f"                <tr><td><strong>no approval asked</strong></td><td>{sum(1 for r in data['evidence_rows'] if not r.get('approval_source'))}</td><td>Rows where no approval prompt was shown</td></tr>",
         "              </tbody>",
         "            </table>",
         "          </div>",
@@ -1385,8 +1249,9 @@ def render_html(data: dict) -> str:
         "            <table>",
         "              <thead><tr><th>Rollback Kind</th><th>Recorded In Evidence</th><th>Mechanism</th></tr></thead>",
         "              <tbody>",
-        "                <tr><td><strong>Real Unplanned</strong></td><td>0</td><td>Automated image swap back upon health breach</td></tr>",
-        "                <tr><td><strong>Staged Demo (S3b)</strong></td><td>0 in live evidence</td><td>Planted slow patch (p95 > 2s) demonstrating swap</td></tr>",
+        f"                <tr><td><strong>Real Unplanned</strong></td><td>{sum(r.get('kind') == 'real' for r in data['rollbacks'])}</td><td>Image swap back upon health breach</td></tr>",
+        f"                <tr><td><strong>Staged Demo</strong></td><td>{sum(r.get('kind') == 'staged' for r in data['rollbacks'])}</td><td>Planted slow patch; demonstrates the mechanism only</td></tr>",
+        f"                <tr><td><strong>Promotions</strong></td><td>{sum(r.get('outcome') == 'promoted' for r in data['deployments'])}</td><td>Health window passed (not proof of correctness)</td></tr>",
         "              </tbody>",
         "            </table>",
         "          </div>",
@@ -1414,43 +1279,34 @@ def render_html(data: dict) -> str:
         "      <div class=\"section-subtitle\">Policy Comparison (B0 to B3), Verified Known Limitations, and Traceability Audit</div>",
         "      <div style=\"font-weight: 600; font-size: 15px; color: var(--text-main); margin-bottom: 6px;\">Policy Comparison (B0 – B3)</div>",
         "      <div class=\"banner alert-warning\">",
-        "        <strong>Data Integrity Notice:</strong> In the active pilot evidence, ground-truth candidate labels are marked as draft pending team review. ",
-        "        Per <code>results/policies.csv</code> and <code>pilot_report.md</code>, labelled units n = 0, so rates are recorded as <code>0/0 (N/A)</code>. ",
-        "        Do not infer safety or accuracy until labels are reviewed and verified.",
+        "        <strong>Data Integrity Notice:</strong> Rows below are generated by <code>analyse.py</code> (<code>results/policies.csv</code>). "
+        "auto / HIR / rejected need no labels. UDR, unsafe escape and FRR need independent labels; with none, they read k/0 (n/a). "
+        "B0 assumes a perfect reviewer, not an observed human decision. Scripted and LLM cohorts are never pooled.",
         "      </div>",
-        "      <div class=\"table-container\">",
-        "        <table>",
-        "          <thead>",
-        "            <tr><th>Policy</th><th>Description</th><th>Unsafe Auto-Applied (k/n)</th><th>Escalations (k/n)</th><th>Safe Rejected (k/n)</th><th>Formula & Meaning</th></tr>",
-        "          </thead>",
-        "          <tbody>",
-        "            <tr>",
-        "              <td><strong>B0</strong></td>",
-        "              <td>Human reviews everything</td>",
-        "              <td>0/0 (N/A)</td><td>0/0 (N/A)</td><td>0/0 (N/A)</td>",
-        "              <td style=\"font-size: 0.8rem; color: var(--text-muted);\">Always ESCALATE. Baseline: 0 unsafe auto-applied, 100% human burden.</td>",
-        "            </tr>",
-        "            <tr>",
-        "              <td><strong>B1</strong></td>",
-        "              <td>Auto-apply if V0+V1 pass, else reject</td>",
-        "              <td>0/0 (N/A)</td><td>0/0 (N/A)</td><td>0/0 (N/A)</td>",
-        "              <td style=\"font-size: 0.8rem; color: var(--text-muted);\">Naive unit-test only policy. Catches syntax & targeted bug, blind to regression & security.</td>",
-        "            </tr>",
-        "            <tr>",
-        "              <td><strong>B2</strong></td>",
-        "              <td>Auto-apply if V0–V2 pass, else reject</td>",
-        "              <td>0/0 (N/A)</td><td>0/0 (N/A)</td><td>0/0 (N/A)</td>",
-        "              <td style=\"font-size: 0.8rem; color: var(--text-muted);\">Regression-gated policy. Blind to security vulnerabilities (SQLi) caught by V3.</td>",
-        "            </tr>",
-        "            <tr>",
-        "              <td><strong>B3</strong></td>",
-        "              <td>AutoImmune decision engine (V0–V3 + scope)</td>",
-        "              <td>0/0 (N/A)</td><td>0/0 (N/A)</td><td>0/0 (N/A)</td>",
-        "              <td style=\"font-size: 0.8rem; color: var(--text-muted);\">Full tiered engine: V0–V3 + diff bounds (≤20 lines), file scope, sensitive paths, disagree checks.</td>",
-        "            </tr>",
-        "          </tbody>",
-        "        </table>",
-        "      </div>",
+    ]
+    metric_cols = [("auto_applied", "Auto-applied"), ("hir_escalated", "HIR (escalated)"), ("rejected", "Rejected"),
+                   ("udr_unsafe_of_auto", "UDR"), ("unsafe_escape", "Unsafe escape"), ("frr_safe_rejected", "FRR")]
+    by_key = {(r["cohort"], r["policy"], r["metric"]): r for r in data["policies"] if "cohort" in r}
+    for cohort in ("scripted", "llm"):
+        policies_here = sorted({r["policy"]: r["description"] for r in data["policies"] if r.get("cohort") == cohort}.items())
+        html_lines += [
+            f"      <div style=\"font-weight: 600; margin: 12px 0 6px;\">{esc(cohort)} cohort</div>",
+            "      <div class=\"table-container\">",
+            "        <table>",
+            "          <thead><tr><th>Policy</th><th>Description</th>" + "".join(f"<th>{esc(h)}</th>" for _, h in metric_cols) + "</tr></thead>",
+            "          <tbody>",
+        ]
+        for code, desc in policies_here:
+            cells = []
+            for m, _ in metric_cols:
+                r = by_key.get((cohort, code, m), {})
+                k, n = r.get("k", "0"), r.get("n", "0")
+                cells.append(f"<td>{esc(k)}/{esc(n)}" + (f" ({float(r['rate']) * 100:.1f}%)" if r.get("rate") else " (n/a)") + "</td>")
+            html_lines.append(f"            <tr><td><strong>{esc(code)}</strong></td><td>{esc(desc)}</td>{''.join(cells)}</tr>")
+        if not policies_here:
+            html_lines.append(f"            <tr><td colspan=\"8\">no {esc(cohort)} units</td></tr>")
+        html_lines += ["          </tbody>", "        </table>", "      </div>"]
+    html_lines += [
         "",
         "      <div style=\"font-weight: 600; font-size: 15px; color: var(--text-main); margin-bottom: 6px;\">Verified Project Limitations & Blockers (Known Limitations)</div>",
         "      <p class=\"section-subtitle\">Verified constraints, historical results, and infrastructure observations</p>",

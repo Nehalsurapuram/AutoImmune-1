@@ -119,6 +119,17 @@ def test_phase3_null_fields_pass_schema():
     validate_row(row)
 
 
+def test_rows_carry_schema_version_and_patch_hash():
+    import hashlib
+    row = build_row(run_id="r", fault_id="F06", gates=_gates([]), diagnosis={"provider_mode": "rule"},
+                    patch={"candidate_id": "F06-live-1", "diff": "--- a\n+++ b\n", "provider_mode": "live"},
+                    patch_meta={"diff_lines": 2, "files_touched": ["a"]},
+                    decision={"tier": "high", "decision": "REJECT", "reasons": ["V1 failed"]})
+    validate_row(row)
+    assert row["schema_version"] == 2
+    assert row["patch_sha256"] == hashlib.sha256(b"--- a\n+++ b\n").hexdigest()
+
+
 def test_extra_field_still_rejected():
     """additionalProperties is still False: no unlisted field may enter the evidence row."""
     with pytest.raises(InvalidEvidenceRow, match="refused at"):

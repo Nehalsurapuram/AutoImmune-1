@@ -235,3 +235,20 @@ def test_cache_files_contain_no_secrets():
         content = path.read_text(encoding="utf-8")
         for pat in patterns:
             assert pat.lower() not in content.lower(), f"Secret pattern {pat!r} found in {path}"
+
+
+# --------------------------------------------------------------------------- prompt leakage guard (audit F-15)
+
+def test_prompts_never_carry_fault_ids_or_oracle_words():
+    """Nothing the model sees may name the fault, a candidate kind, or the oracle (roadmap S4 leakage rule)."""
+    import re
+    p = providers.LLMProvider("replay", env=ENV)
+    incident = {"fault_id": "F06", "kind": "probe_mismatch", "rule": "probe_mismatch",
+                "endpoint": "/api/orders/2/discount", "status": 200, "expected": "900.00", "actual": "1000.00"}
+    diag = Diagnosis(causes=[Cause(rank=1, file=SERVICE, line=40, reason="threshold check", evidence="probe returned 1000.00")], provider_mode="replay")
+    messages = p.diagnosis_messages(incident, sources()) + p.patch_messages(diag, sources(), 3)
+    text = json.dumps(messages)
+    assert not re.search(r"\bF\d\d\b", text), "fault id reached the prompt"
+    for word in ("hidden_tests", "HiddenTest", "labels.json", "overfitting", "regressive", "insecure",
+                 "ineffective", "candidate_kind", "expected_symptom", "diagnosed_file"):
+        assert word not in text, word

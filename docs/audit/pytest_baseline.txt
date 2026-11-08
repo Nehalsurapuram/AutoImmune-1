@@ -1,0 +1,53 @@
+# Command: python -m pytest -p no:cacheprovider -rs
+# Env: clean venv, CPython 3.12.0 + requirements.txt; run 2026-11-08 inside an extracted copy of
+# AutoImmune.zip (sha256 9c90e7e3...) so tests could not write into the repo's runs/.
+============================= test session starts =============================
+platform win32 -- Python 3.12.0, pytest-9.2.0, pluggy-1.7.0
+rootdir: <isolated copy of AutoImmune.zip>
+configfile: pytest.ini
+testpaths: tests
+collected 181 items
+
+tests\test_analyse.py ......                                             [  3%]
+tests\test_dashboard.py FF..                                             [  5%]
+tests\test_decide.py .......................................             [ 27%]
+tests\test_deploy.py ...........................                         [ 41%]
+tests\test_detector.py ...............                                   [ 50%]
+tests\test_detector_metrics.py .........                                 [ 55%]
+tests\test_orchestrator.py ......                                        [ 58%]
+tests\test_providers.py ..................                               [ 68%]
+tests\test_record.py .....................                               [ 80%]
+tests\test_sandbox.py ............ssssssssssssssss                       [ 95%]
+tests\test_smoke.py .                                                    [ 96%]
+tests\test_terminal.py .......                                           [100%]
+
+================================== FAILURES ===================================
+_____________ test_build_dashboard_data_reconciles_with_evidence ______________
+
+    def test_build_dashboard_data_reconciles_with_evidence():
+        evidence_path = REPO / "results" / "evidence.jsonl"
+        data = build_dashboard_data(REPO, evidence_path, REPO / "results", REPO / "docs")
+    
+>       assert len(data["evidence_rows"]) == 25
+E       AssertionError: assert 79 == 25
+E        +  where 79 = len([{'apply_error': None, 'approval_source': None, 'awaiting_review': False, 'candidate_id': 'F06-scripted-fd6a948c', ......ly_error': None, 'approval_source': None, 'awaiting_review': False, 'candidate_id': 'F06-scripted-7509cb64', ...}, ...])
+
+tests\test_dashboard.py:16: AssertionError
+________________________ test_first_stop_distribution _________________________
+
+    def test_first_stop_distribution():
+        evidence_path = REPO / "results" / "evidence.jsonl"
+        data = build_dashboard_data(REPO, evidence_path, REPO / "results", REPO / "docs")
+        stops = data["first_stop_counts"]
+    
+>       assert stops["V0"] == 9
+E       assert 6 == 9
+
+tests\test_dashboard.py:36: AssertionError
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_sandbox.py:164: docker daemon not reachable
+SKIPPED [1] tests\test_sandbox.py:174: docker daemon not reachable
+SKIPPED [1] tests\test_sandbox.py:184: docker daemon not reachable
+SKIPPED [13] tests\test_sandbox.py:224: docker daemon not reachable
+================== 2 failed, 163 passed, 16 skipped in 7.85s ==================
+exit=1
