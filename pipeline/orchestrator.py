@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pipeline import deploy, detector, record, sandbox
+from pipeline import deploy, detector, record, sandbox, terminal
 from pipeline.decide import decide, patch_meta
 from pipeline.providers import get_provider
 
@@ -154,17 +154,16 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
     run_dir.mkdir(parents=True, exist_ok=True)
     keep_awake()
     t0 = time.monotonic()
-    state = {"step": 1, "title": "banner"}
+    state = {"step": 1, "title": "BASELINE INITIALIZATION"}
 
     def step(n: int, title: str) -> None:
         state.update(step=n, title=title)
-        print(f"\n[{n}/10] {title}  (+{time.monotonic() - t0:.0f}s)", flush=True)
+        elapsed = time.monotonic() - t0
+        terminal.print_stage(n, 10, title, elapsed)
 
-    print("=" * 78)
-    print(f"AutoImmune run {run_id}")
-    print(f"fault={fault}  diag_mode={diag_mode}  patch_mode={patch_mode}"
-          + ("" if {diag_mode, patch_mode} & {"live", "replay"} else "   (no LLM: rule/scripted results)"))
-    print("=" * 78, flush=True)
+    extra_note = "" if {diag_mode, patch_mode} & {"live", "replay"} else "(no LLM: rule/scripted results)"
+    terminal.print_header(run_id, fault, diag_mode, patch_mode, extra_note)
+
     _write(run_dir / "run.json", {"run_id": run_id, "fault_id": fault, "diag_mode": diag_mode,
                                   "patch_mode": patch_mode, "candidate": candidate, "deploy_each": deploy_each,
                                   "diag_samples": n_samples, "gates_only": gates_only,
@@ -173,8 +172,9 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
     releases: dict[str, dict] = {}
     approvals: dict[str, dict] = {}
     try:
+        step(1, "BASELINE INITIALIZATION")
         with tempfile.TemporaryDirectory(prefix="autoimmune-run-") as tmp:
-            step(2, "baseline running and healthy")
+            step(2, "HEALTH CHECK")
             if deploy.current_image() == deploy.BASELINE_TAG and deploy._health(cfg)["ok"]:
                 info = {"image": deploy.BASELINE_TAG, "already_running": True}
             else:
@@ -182,7 +182,7 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
             _write(run_dir / "baseline.json", info)
             print(f"  {info}")
 
-            step(3, "deploy the faulty build (inject.diff) and watch for an incident")
+            step(3, "FAULT INJECTION & INCIDENT DETECTION")
             faulty_src = sandbox.prepare_patched_app(fault, None, Path(tmp) / "faulty")
             faulty = deploy.deploy(faulty_src, f"{run_id}-faulty", cfg)
             _write(run_dir / "faulty_deploy.json", {k: v for k, v in faulty.items() if k != "swap_clock"})
@@ -195,7 +195,7 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
             print(f"  incident: rule={incident['rule']} endpoint={incident['endpoint']} "
                   f"status={incident['status']} -> runs/{run_id}/incident.json")
 
-            step(4, f"diagnose ({diag_mode}) and draft patches ({patch_mode})")
+            step(4, "AI DIAGNOSIS & PATCH GENERATION")
             sources = _source_files(faulty_src)
             # Build provider kwargs for LLM modes: thread in n_samples and sample_temperature
             diag_kwargs = ({"n_samples": n_samples, "sample_temperature": sample_temperature}
@@ -217,18 +217,22 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
             _write(run_dir / "patches.json", [p.to_dict() for p in patches])
             print(f"  {len(patches)} candidates: {', '.join(p.candidate_id for p in patches)}")
 
-            step(5, "gates V0-V3 and decision for every candidate (sandbox, one at a time)")
+            step(5, "SANDBOX VALIDATION — V0 TO V3")
             for p in patches:
                 gates = sandbox.run_gates(fault, p, run_id)
                 meta = patch_meta(p.diff)
                 dec = decide(gates, diagnosis, meta, cfg)
                 _write(run_dir / p.candidate_id / "decision.json", {**dec.to_dict(), "patch_meta": meta})
                 candidates.append({"patch": p, "gates": gates, "meta": meta, "decision": dec})
-                print(f"  {p.candidate_id}: " + " ".join(f"{g}={gates['gates'][g]['status']}" for g in GATES)
-                      + f" -> {dec.decision}", flush=True)
+
+            # Present clean aligned validation gate table
+            terminal.print_gate_table([
+                {"candidate_id": c["patch"].candidate_id, "gates": c["gates"], "decision": c["decision"].decision}
+                for c in candidates
+            ])
 
             if gates_only:
-                step(6, "gates-only mode: recording evidence rows and skipping deploy")
+                step(6, "CANDIDATE SELECTION")
                 for c in candidates:
                     cid = c["patch"].candidate_id
                     llm_attempts = (len(diagnosis.attempts) // max(1, n_samples)
@@ -258,13 +262,13 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
                              "tier": c["decision"].tier, "decision": c["decision"].decision}
                             for c in candidates]}
 
-            step(6, "choose a candidate (decision and diff size only)")
+            step(6, "CANDIDATE SELECTION")
             sel = choose([{"candidate_id": c["patch"].candidate_id, "decision": c["decision"].decision,
                            "diff_lines": c["meta"]["diff_lines"]} for c in candidates], candidate, deploy_each)
             _write(run_dir / "choice.json", {"note": sel.note, "chosen": sel.chosen})
             print(f"  {sel.note}: {[e['candidate_id'] for e in sel.chosen] or 'none'}")
 
-            step(7, "deploy + health window -> promote or roll back")
+            step(7, "DEPLOYMENT & HEALTH MONITORING")
             by_id = {c["patch"].candidate_id: c for c in candidates}
             for i, e in enumerate(sel.chosen):
                 c = by_id[e["candidate_id"]]
@@ -275,7 +279,7 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
                 approval = None
                 if dec.decision == "ESCALATE":
                     approval = deploy.approve_cli(dec, c["patch"].diff, input_fn=input_fn, run_dir=run_dir / cid,
-                                                  source=approval_source)
+                                                  source=approval_source, candidate_id=cid)
                     approvals[cid] = approval
                     print(f"  approval: {approval['answer']} by {approval['user']} at {approval['time']} "
                           f"({approval['approval_source']})")
@@ -285,7 +289,7 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
                 releases[cid] = rel
                 print(f"  {cid}: {_result(rel, dec.decision)}", flush=True)
 
-            step(8, "record one evidence row per candidate")
+            step(8, "EVIDENCE COLLECTION")
             for c in candidates:
                 cid, rel = c["patch"].candidate_id, releases.get(c["patch"].candidate_id)
                 # derive per-patch fields for the evidence row
@@ -316,8 +320,8 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
         _restore_baseline(cfg, step)
         raise err from exc
 
-    _restore_baseline(cfg, step)
-    step(10, "summary")
+    baseline_state = _restore_baseline(cfg, step)
+    step(10, "EXECUTION SUMMARY")
     rows = []
     for c in candidates:
         cid, rel = c["patch"].candidate_id, releases.get(c["patch"].candidate_id)
@@ -329,19 +333,72 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
                "oracle_localisation": diagnosis.oracle_localisation, "choice": sel.note,
                "seconds": round(time.monotonic() - t0), "candidates": rows}
     _write(run_dir / "summary.json", summary)
-    print(f"run {run_id}  fault {fault}  diag_mode={diag_mode}  patch_mode={patch_mode}  "
-          f"incident={incident['rule']}  ({summary['seconds']}s)")
+
+    # Detailed counts for execution summary
+    val_passed = sum(1 for c in candidates if all(c["gates"]["gates"][g]["status"] == "pass" for g in GATES))
+    val_failed = len(candidates) - val_passed   # any gate not "pass" (fail, error, timeout, not_run)
+    auto_count = sum(1 for c in candidates if c["decision"].decision == "AUTO_APPLY")
+    esc_count = sum(1 for c in candidates if c["decision"].decision == "ESCALATE")
+    rej_count = sum(1 for c in candidates if c["decision"].decision == "REJECT")
+    dep_status, final_status = summary_status(releases)
+
+    terminal.print_execution_summary(
+        run_id=run_id,
+        fault=fault,
+        candidates_count=len(candidates),
+        val_passed_count=val_passed,
+        val_failed_count=val_failed,
+        auto_apply_count=auto_count,
+        escalated_count=esc_count,
+        rejected_count=rej_count,
+        deployment_status=dep_status,
+        baseline_status=baseline_state,
+        evidence_saved=f"results/evidence.jsonl & runs/{run_id}/evidence.jsonl",
+        final_status=final_status,
+        seconds=time.monotonic() - t0,
+    )
+
     print_table(rows)
     return summary
 
 
-def _restore_baseline(cfg: dict, step) -> None:
-    step(9, "restore the baseline")
+def summary_status(releases: dict) -> tuple[str, str]:
+    """(deployment status, final status) for the terminal summary, worded only from recorded outcomes.
+
+    A rollback means the health window was breached, not that the candidate is unsafe; a promotion means the
+    window passed, not that the patch is correct. Correctness comes only from the offline oracle.
+    """
+    promoted = [cid for cid, rel in releases.items() if rel.get("outcome") == "promoted"]
+    rolled_back = [cid for cid, rel in releases.items() if rel.get("rolled_back")]
+    invalid = [cid for cid, rel in releases.items() if str(rel.get("outcome", "")).startswith("invalid")]
+    awaiting = [cid for cid, rel in releases.items() if rel.get("awaiting_review")]
+    parts = ([f"promoted ({', '.join(promoted)})"] if promoted else []) + \
+            ([f"rolled back ({', '.join(rolled_back)})"] if rolled_back else []) + \
+            ([f"invalid window ({', '.join(invalid)})"] if invalid else []) + \
+            ([f"awaiting review ({', '.join(awaiting)})"] if awaiting else [])
+    if not parts:
+        return "no candidate deployed", "COMPLETED: no deployment"
+    if rolled_back:
+        final = "ROLLED BACK: health window breached, previous image restored"
+    elif invalid:
+        final = "INVALID: observer suspended, health window proves nothing"
+    elif promoted:
+        final = "PROMOTED: health window passed (correctness not verified by the pipeline)"
+    else:
+        final = "PENDING: human review required"
+    return "; ".join(parts), final
+
+
+def _restore_baseline(cfg: dict, step) -> str:
+    """Put the baseline back. Returns what was observed, for the summary; never claims health it did not check."""
+    step(9, "BASELINE RESTORATION")
     try:
         if deploy.current_image() == deploy.BASELINE_TAG and deploy._health(cfg)["ok"]:
             print("  baseline already running and healthy")
-            return
+            return f"{deploy.BASELINE_TAG} running, health check UP"
         seconds = deploy.switch_to(deploy.BASELINE_TAG, cfg, healthy=True)
         print(f"  {deploy.BASELINE_TAG} running and healthy after {seconds:.1f}s")
+        return f"{deploy.BASELINE_TAG} restored, health check UP after {seconds:.1f}s"
     except Exception as exc:   # report, but do not hide the original error
         print(f"  could not restore the baseline: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return f"NOT RESTORED ({type(exc).__name__}); check the service manually"

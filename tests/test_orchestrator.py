@@ -142,3 +142,40 @@ def test_failing_step_stops_with_the_real_error_and_restores_baseline(faked, mon
     err = json.loads((tmp / "runs" / "t2" / "error.json").read_text(encoding="utf-8"))
     assert err["step"] == 3 and "no incident" in err["error"]
     assert calls[-1] == ("switch", "order-service:baseline") and rows == []
+
+
+# --------------------------------------------------------------------------- summary wording (audit F-18)
+
+def test_summary_status_words_only_recorded_outcomes():
+    s = orchestrator.summary_status
+    assert s({}) == ("no candidate deployed", "COMPLETED: no deployment")
+    dep, final = s({"c1": {"outcome": "promoted", "rolled_back": False}})
+    assert dep == "promoted (c1)" and final.startswith("PROMOTED") and "not verified" in final
+    dep, final = s({"c1": {"outcome": "rolled_back", "rolled_back": True}})
+    assert dep == "rolled back (c1)" and final.startswith("ROLLED BACK")
+    dep, final = s({"c1": {"outcome": "invalid: observer_suspended"}})
+    assert final.startswith("INVALID")
+    dep, final = s({"c1": {"awaiting_review": True}})
+    assert dep == "awaiting review (c1)" and final.startswith("PENDING")
+    # deploy_each: both outcomes are reported; a rollback dominates the headline
+    dep, final = s({"c1": {"outcome": "promoted"}, "c2": {"rolled_back": True}})
+    assert dep == "promoted (c1); rolled back (c2)" and final.startswith("ROLLED BACK")
+    words = " ".join(" ".join(s(r)) for r in ({}, {"c": {"outcome": "promoted"}}, {"c": {"rolled_back": True}}))
+    assert not any(w in words.lower() for w in ("unsafe", "success", "safety arrest", "healthy"))
+
+
+def test_restore_baseline_reports_failure_instead_of_claiming_health(monkeypatch):
+    from pipeline import deploy
+    monkeypatch.setattr(deploy, "current_image", lambda: "order-service:faulty")
+    def boom(*a, **k):
+        raise RuntimeError("docker down")
+    monkeypatch.setattr(deploy, "switch_to", boom)
+    out = orchestrator._restore_baseline({}, lambda n, t: None)
+    assert out.startswith("NOT RESTORED") and "RuntimeError" in out
+
+
+def test_restore_baseline_reports_observed_health(monkeypatch):
+    from pipeline import deploy
+    monkeypatch.setattr(deploy, "current_image", lambda: deploy.BASELINE_TAG)
+    monkeypatch.setattr(deploy, "_health", lambda cfg: {"ok": True})
+    assert "health check UP" in orchestrator._restore_baseline({}, lambda n, t: None)

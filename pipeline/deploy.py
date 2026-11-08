@@ -323,20 +323,25 @@ APPROVAL_SOURCES = ("human_cli", "human_relayed", "scripted_test")
 
 
 def approve_cli(decision, diff: str, *, input_fn=input, out=print, user: str | None = None,
-                run_dir: Path | None = None, max_tries: int = 3, source: str = "human_cli") -> dict:
+                run_dir: Path | None = None, max_tries: int = 3, source: str = "human_cli",
+                candidate_id: str | None = None) -> dict:
     """source: "human_cli" when a person types the answer here; "human_relayed" when a person decided elsewhere
     and a tool feeds their answer in; "scripted_test" when a script supplies the answer."""
     if source not in APPROVAL_SOURCES:
         raise ValueError(f"approval source must be one of {APPROVAL_SOURCES}, not {source!r}")
     d = _decision_dict(decision)
-    out("=" * 72)
-    out(f"Decision: {d['decision']}   tier: {d['tier']}   policy: {d.get('policy_version')}")
-    out("Reasons:")
-    for r in d["reasons"]:
-        out(f"  - {r}")
-    out("-" * 72)
-    out(diff.rstrip())
-    out("=" * 72)
+    cid = candidate_id or d.get("candidate_id") or "Candidate"
+
+    from pipeline.terminal import print_approval_section
+    print_approval_section(
+        candidate_id=cid,
+        tier=str(d.get("tier", "MEDIUM")),
+        reasons=d.get("reasons", []),
+        diff=diff,
+        policy_version=d.get("policy_version"),
+        out=out,
+    )
+
     answer = "no_answer"
     for _ in range(max_tries):
         try:

@@ -24,12 +24,13 @@ def main(argv=None) -> int:
         return 0
 
     from pipeline.orchestrator import StepError, run
+    from pipeline.terminal import style
     try:
         run(args.fault, args.diag_mode, args.patch_mode, candidate=args.candidate, deploy_each=args.deploy_each,
             run_id=args.run_id, diag_samples=args.diag_samples, gates_only=args.gates_only)
     except StepError as e:
         traceback.print_exception(e.cause)
-        print(f"\nFAILED: {e}", file=sys.stderr)
+        print(f"\n{style.BOLD_RED}FAILED:{style.RESET} {e}", file=sys.stderr)
         return 1
     return 0
 

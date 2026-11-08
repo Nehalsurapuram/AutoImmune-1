@@ -27,3 +27,6 @@ results/*
 # OS and IDE metadata
 .DS_Store
 Thumbs.db
+
+# Personal editor settings
+.vscode/
