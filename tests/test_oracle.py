@@ -87,3 +87,22 @@ def test_pipeline_never_references_hidden_tests_dir_for_reading():
         for line in text.splitlines():
             if "hidden_tests" in line and "open(" in line:
                 raise AssertionError(f"{p.name} opens hidden_tests: {line.strip()}")
+
+
+def test_only_new_reuses_results_only_with_identical_hidden_tests(tmp_path):
+    hidden = tmp_path / "faults" / "F06" / "hidden_tests"
+    hidden.mkdir(parents=True)
+    (hidden / "F06HiddenTest.java").write_text("v1")
+    (tmp_path / "results").mkdir()
+    old = {"fault_id": "F06", "patch_sha256": "aaa", "label": "correct", "oracle_version": oracle.ORACLE_VERSION,
+           "hidden_tests_sha256": oracle.hidden_hashes("F06", tmp_path), "occurrences": []}
+    (tmp_path / "results" / "oracle_report.jsonl").write_text(json.dumps(old) + "\n")
+    cands = [{"fault_id": "F06", "patch_sha256": "aaa", "origins": ["live"], "scripted_file": None,
+              "occurrences": [{"run_id": "new", "candidate_id": "F06-live-1"}]},
+             {"fault_id": "F06", "patch_sha256": "bbb", "origins": ["live"], "scripted_file": None, "occurrences": []}]
+    reused, todo = oracle.reuse_previous(cands, tmp_path)
+    assert [r["patch_sha256"] for r in reused] == ["aaa"] and reused[0]["occurrences"][0]["run_id"] == "new"
+    assert [c["patch_sha256"] for c in todo] == ["bbb"]
+    (hidden / "F06HiddenTest.java").write_text("v2")              # hidden tests changed: nothing is reused
+    reused, todo = oracle.reuse_previous(cands, tmp_path)
+    assert reused == [] and len(todo) == 2

@@ -193,17 +193,48 @@ def write_outputs(rows: list[dict], repo: Path = REPO) -> None:
                                 indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
+def hidden_hashes(fault_id: str, repo: Path = REPO) -> dict[str, str]:
+    return {f.name: hashlib.sha256(f.read_bytes()).hexdigest()
+            for f in sorted((repo / "faults" / fault_id / "hidden_tests").glob("*.java"))}
+
+
+def reuse_previous(cands: list[dict], repo: Path = REPO) -> tuple[list[dict], list[dict]]:
+    """Split candidates into (reused rows, to evaluate). A previous row is reused only for the same fault and patch
+    hash, the same oracle version and byte-identical hidden tests; its occurrences are refreshed."""
+    prev = {}
+    report = repo / "results" / "oracle_report.jsonl"
+    if report.is_file():
+        for line in report.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                r = json.loads(line)
+                prev[(r["fault_id"], r["patch_sha256"])] = r
+    reused, todo = [], []
+    for c in cands:
+        r = prev.get((c["fault_id"], c["patch_sha256"]))
+        if r and r.get("oracle_version") == ORACLE_VERSION and r.get("hidden_tests_sha256") == hidden_hashes(c["fault_id"], repo):
+            reused.append({**r, "origins": c["origins"], "scripted_file": c["scripted_file"],
+                           "occurrences": c["occurrences"]})
+        else:
+            todo.append(c)
+    return reused, todo
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--workers", type=int, default=3)
+    ap.add_argument("--only-new", action="store_true",
+                    help="reuse existing results for candidates already labelled with the SAME hidden tests")
     a = ap.parse_args(argv)
     cands = collect_candidates()
     print(f"{len(cands)} distinct candidates "
           f"({sum('scripted' in c['origins'] for c in cands)} scripted, "
           f"{sum('scripted' not in c['origins'] for c in cands)} live/replay)", flush=True)
-    rows = []
+    rows, todo = [], cands
+    if a.only_new:
+        rows, todo = reuse_previous(cands)
+        print(f"  reusing {len(rows)} earlier results; evaluating {len(todo)} new or changed", flush=True)
     with ThreadPoolExecutor(max_workers=a.workers) as pool:
-        for r in pool.map(evaluate, cands):
+        for r in pool.map(evaluate, todo):
             name = r["scripted_file"] or ", ".join(f"{o['run_id']}/{o['candidate_id']}" for o in r["occurrences"][:2])
             print(f"  {r['fault_id']} {name[:70]:70s} -> {r['label']:10s} ({r['seconds']} s)", flush=True)
             rows.append(r)
