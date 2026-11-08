@@ -6,13 +6,29 @@ rule      diagnose only. Top application stack frame of the incident; for incide
           trace (probe mismatch, health DOWN) the fault's diagnosed_file from faults/<id>/fault.json,
           i.e. oracle localisation. Never an LLM result.
 scripted  draft_patches only. Patches read from faults/<id>/candidates/*.diff. Never an LLM result.
-replay    diagnose and draft_patches from cache/, keyed by sha256(provider, model, prompt, temperature).
-          No network. A missing entry is an error.
+replay    diagnose and draft_patches from cache/, keyed by sha256(CACHE_KEY_VERSION, provider, model, prompt,
+          temperature, sample index). No network. A missing entry is an error; an entry recorded under an older
+          key scheme (version 1 had no version in the key and no cache_key_version field) is reported as a
+          version mismatch, not as a bare miss. Old entries are never rewritten: re-record them with mode=live.
 live      diagnose and draft_patches via an OpenAI-compatible /chat/completions endpoint configured by
-          LLM_BASE_URL, LLM_MODEL, LLM_API_KEY (Ollama or a hosted API). Every response is saved to cache/.
+          LLM_BASE_URL, LLM_MODEL, LLM_API_KEY (Ollama or a hosted API). Every response is saved to cache/
+          with a cache_key_version field.
 
 Each result carries provider_mode, so diag_mode and patch_mode are recorded separately by the caller.
 Every patch is checked with `git apply --check` against a temp copy of app/ with the fault injected.
+
+Raw-output audit trail (live/replay only)
+-----------------------------------------
+Every attempt record holds cache_key and raw_sha256 (SHA-256 of the full, unmodified response text; None
+when the transport failed). Each LLM Patch carries raw_output_sha256 (the response it came from) and a
+format_status:
+  raw_valid   the diff as drafted passes validate_diff_structure(); it is used unchanged.
+  normalized  it failed, and normalize_diff() (NORMALIZER_VERSION) produced a diff that passes. Patch.diff is
+              the normalized text, Patch.raw_diff keeps the original, normalizer_rules says which rules fired.
+  invalid     it failed and normalization did not fix it. Patch.diff stays exactly as drafted.
+raw_diff_sha256 and diff_sha256 (of the text actually apply-checked) let analysis report raw-valid and
+normalized-valid rates separately. Normalization is deterministic and never calls the model; there is no
+repair loop. Scripted patches are not LLM output and keep format_status None.
 
 Integrity: this module never reads faults/<id>/hidden_tests/ or labels.json, and refuses source files
 from those paths. candidate_kind (scripted only) is for records and analysis, never for the decision engine.
@@ -48,6 +64,8 @@ JAVA_ROOT = "app/src/main/java/"
 MAX_RETRIES = 2                      # retries after the first attempt
 HTTP_TIMEOUT_S = 180
 FORBIDDEN_PARTS = ("hidden_tests", "labels.json")
+CACHE_KEY_VERSION = 2                # 1 = original scheme, without a version in the key material
+NORMALIZER_VERSION = 1               # bump whenever the normalize_diff() rules change
 
 
 class ProviderError(RuntimeError):
@@ -89,6 +107,15 @@ class Patch:
     applies: bool | None = None         # git apply --check on app/ + inject.diff
     apply_error: str | None = None
     attempts: list[dict] = field(default_factory=list)   # live/replay request attempts (bounded retries)
+    # Raw-output audit trail (live/replay only; None/[] for scripted). See the module docstring.
+    raw_output_sha256: str | None = None    # full model response that contained this patch
+    format_status: str | None = None        # "raw_valid" | "normalized" | "invalid"
+    format_problems: list[str] = field(default_factory=list)   # validate_diff_structure() of the raw diff
+    raw_diff_sha256: str | None = None
+    diff_sha256: str | None = None          # of .diff, the text actually apply-checked
+    raw_diff: str | None = None             # original diff, kept only when format_status == "normalized"
+    normalizer_version: int | None = None   # set when the normalizer was tried (status != raw_valid)
+    normalizer_rules: list[str] = field(default_factory=list)  # rules that fired, in order
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -151,6 +178,120 @@ def check_patches(patches: list[Patch], fault_id: str, repo: Path = REPO) -> lis
             if not p.applies:
                 log.info("patch %s does not apply: %s", p.candidate_id, p.apply_error)
     return patches
+
+
+# --------------------------------------------------------------------------- diff format check / normalizer
+
+HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+
+
+def _sha256(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _is_file_header(lines: list[str], i: int) -> bool:
+    return lines[i].startswith("--- ") and i + 1 < len(lines) and lines[i + 1].startswith("+++ ")
+
+
+def validate_diff_structure(diff: str) -> list[str]:
+    """Structural problems of a unified diff; an empty list means structurally valid.
+
+    Checks: LF line endings and a trailing newline; at least one `--- ` line directly followed by `+++ `;
+    no hunk before a file header; every `@@` line well-formed; each hunk body has exactly the old/new
+    line counts its header declares. It does not say whether the diff applies: git apply decides that."""
+    if not diff.strip():
+        return ["empty diff"]
+    problems = []
+    if "\r" in diff:
+        problems.append("CRLF line endings")
+    if not diff.endswith("\n"):
+        problems.append("no trailing newline")
+    lines = diff.replace("\r\n", "\n").split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    have_header, hunk_no, i = False, 0, 0
+    while i < len(lines):
+        if _is_file_header(lines, i):
+            have_header, i = True, i + 2
+            continue
+        if not lines[i].startswith("@@"):
+            i += 1
+            continue
+        hunk_no += 1
+        m = HUNK_RE.match(lines[i])
+        i += 1
+        if not m:
+            problems.append(f"hunk {hunk_no}: malformed header {lines[i - 1][:60]!r}")
+            continue
+        if not have_header:
+            problems.append(f"hunk {hunk_no}: no ---/+++ file header before it")
+        old = int(m.group(2)) if m.group(2) is not None else 1
+        new = int(m.group(4)) if m.group(4) is not None else 1
+        while i < len(lines) and (old > 0 or new > 0):
+            tag = lines[i][:1]
+            if tag in (" ", ""):                 # git also reads an empty line as empty context
+                old, new = old - 1, new - 1
+            elif tag == "-":
+                old -= 1
+            elif tag == "+":
+                new -= 1
+            elif tag != "\\":                    # "\ No newline at end of file"
+                break
+            i += 1
+        while i < len(lines) and lines[i].startswith("\\"):
+            i += 1
+        if old != 0 or new != 0:
+            problems.append(f"hunk {hunk_no}: body does not match header {m.group(0)!r}")
+        elif i < len(lines) and lines[i][:1] in ("+", "-", " ") and not _is_file_header(lines, i):
+            problems.append(f"hunk {hunk_no}: more body lines than header {m.group(0)!r} declares")
+    if hunk_no == 0:
+        problems.append("no hunks")
+    if not have_header:
+        problems.append("no ---/+++ file header")
+    return problems
+
+
+def normalize_diff(diff: str, target_files: set[str]) -> tuple[str, list[str]]:
+    """Deterministic rewrite of a structurally invalid diff (NORMALIZER_VERSION). Returns (text, rules fired).
+
+    Rules, in order: crlf_to_lf; trailing_newline; add_file_headers (only when there are @@ hunks, no
+    `--- `, `+++ ` or `diff --git` line at all, and exactly one target file). The caller re-validates the
+    result and keeps the raw diff if it is still invalid."""
+    text, rules = diff, []
+    if "\r" in text:
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        rules.append("crlf_to_lf")
+    if text.strip() and not text.endswith("\n"):
+        text += "\n"
+        rules.append("trailing_newline")
+    lines = text.split("\n")
+    has_hunks = any(line.startswith("@@") for line in lines)
+    has_headers = any(line.startswith(("--- ", "+++ ", "diff --git")) for line in lines)
+    if has_hunks and not has_headers and len(target_files) == 1:
+        target = next(iter(target_files)).replace("\\", "/")
+        text = f"--- a/{target}\n+++ b/{target}\n" + text.lstrip("\n")
+        rules.append("add_file_headers")
+    return text, rules
+
+
+def apply_format_check(patch: Patch, target_files: set[str]) -> Patch:
+    """Set the format/sha/normalizer fields of an LLM patch. .diff changes only when normalization yields a
+    structurally valid diff; otherwise the drafted text is left exactly as it was."""
+    raw = patch.diff
+    patch.raw_diff_sha256 = _sha256(raw)
+    patch.format_problems = validate_diff_structure(raw)
+    if not patch.format_problems:
+        patch.format_status = "raw_valid"
+    else:
+        patch.normalizer_version = NORMALIZER_VERSION
+        fixed, rules = normalize_diff(raw, target_files)
+        if rules and not validate_diff_structure(fixed):
+            patch.format_status, patch.diff, patch.raw_diff = "normalized", fixed, raw
+            patch.normalizer_rules = rules
+        else:
+            patch.format_status = "invalid"
+    patch.diff_sha256 = _sha256(patch.diff)
+    return patch
 
 
 # --------------------------------------------------------------------------- rule mode
@@ -383,27 +524,46 @@ class LLMProvider:
     # ---- cache
 
     def cache_key(self, messages: list[dict], sample_index: int = 0,
-                  override_temperature: float | None = None) -> str:
-        """Stable SHA256 key. sample_index and temperature are part of the key so each sample
-        has a distinct entry and replay is deterministic per (provider, model, messages, temp, sample)."""
+                  override_temperature: float | None = None, version: int = CACHE_KEY_VERSION) -> str:
+        """Stable SHA256 key. sample_index and temperature are part of the key so each sample has a distinct
+        entry and replay is deterministic per (version, provider, model, messages, temp, sample).
+        version=1 reproduces the original unversioned scheme; it is used only to diagnose old entries."""
         temp = override_temperature if override_temperature is not None else self.temperature
         prompt = json.dumps(messages, sort_keys=True, ensure_ascii=False)
-        material = json.dumps([self.base_url, self.model, prompt, temp, sample_index], ensure_ascii=False)
+        parts = [self.base_url, self.model, prompt, temp, sample_index]
+        if version != 1:
+            parts = [version] + parts
+        material = json.dumps(parts, ensure_ascii=False)
         return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
     def _cache_path(self, key: str) -> Path:
         return self.cache_dir / f"{key}.json"
 
-    def _fetch(self, messages: list[dict], key: str, temperature: float | None = None) -> str:
-        """temperature overrides self.temperature for the HTTP request (and is recorded in the cache entry)."""
+    def _fetch(self, messages: list[dict], key: str, temperature: float | None = None,
+               sample_index: int = 0) -> str:
+        """temperature overrides self.temperature for the HTTP request (and is recorded in the cache entry).
+        sample_index is only used to look up an entry recorded under the version-1 key scheme."""
         eff_temp = temperature if temperature is not None else self.temperature
         if self.mode == "replay":
             path = self._cache_path(key)
             if not path.is_file():
+                legacy = self._cache_path(self.cache_key(messages, sample_index, temperature, version=1))
+                if legacy.is_file():
+                    raise ProviderError(
+                        f"replay cache version mismatch: this request was recorded as {legacy.name} under "
+                        f"cache key version 1, but this code uses cache key version {CACHE_KEY_VERSION}. "
+                        f"Old entries are not migrated; re-record with mode=live.")
                 raise ProviderError(
                     f"replay cache miss: {path} not found (provider={self.base_url}, model={self.model}, "
-                    f"temperature={eff_temp}). Record it first with mode=live.")
-            return json.loads(path.read_text(encoding="utf-8"))["response"]
+                    f"temperature={eff_temp}, cache_key_version={CACHE_KEY_VERSION}). "
+                    f"Record it first with mode=live.")
+            entry = json.loads(path.read_text(encoding="utf-8"))
+            if entry.get("cache_key_version") != CACHE_KEY_VERSION:
+                raise ProviderError(
+                    f"replay cache version mismatch: {path.name} has cache_key_version="
+                    f"{entry.get('cache_key_version')!r}, but this code uses {CACHE_KEY_VERSION}. "
+                    f"Re-record with mode=live.")
+            return entry["response"]
 
         headers = {"Content-Type": "application/json"}
         if self._api_key:
@@ -414,7 +574,7 @@ class LLMProvider:
         resp.raise_for_status()
         text = resp.json()["choices"][0]["message"]["content"]
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        entry = {"key": key, "provider": self.base_url, "model": self.model, "temperature": eff_temp,
+        entry = {"key": key, "cache_key_version": CACHE_KEY_VERSION, "provider": self.base_url, "model": self.model, "temperature": eff_temp,
                  "messages": messages, "response": text,
                  "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
         self._cache_path(key).write_text(json.dumps(entry, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -429,12 +589,13 @@ class LLMProvider:
         for attempt in range(1, MAX_RETRIES + 2):
             key = self.cache_key(messages, sample_index=sample_index, override_temperature=sample_temp)
             try:
-                text = self._fetch(messages, key, temperature=sample_temp)
+                text = self._fetch(messages, key, temperature=sample_temp, sample_index=sample_index)
             except ProviderError:
                 raise
             except (requests.RequestException, KeyError, IndexError, ValueError) as e:
                 err = f"transport error: {type(e).__name__}: {e}"
-                attempts.append({"attempt": attempt, "cache_key": key, "ok": False, "error": err})
+                attempts.append({"attempt": attempt, "cache_key": key, "raw_sha256": None, "ok": False,
+                                 "error": err})
                 log.warning("%s attempt %d/%d failed: %s", what, attempt, MAX_RETRIES + 1, err)
                 continue
             try:
@@ -444,15 +605,17 @@ class LLMProvider:
                     extra_check(data)
             except (ValueError, jsonschema.ValidationError) as e:
                 err = f"invalid response: {e.message if isinstance(e, jsonschema.ValidationError) else e}"
-                attempts.append({"attempt": attempt, "cache_key": key, "ok": False, "error": err})
+                attempts.append({"attempt": attempt, "cache_key": key, "raw_sha256": _sha256(text), "ok": False,
+                                 "error": err})
                 log.warning("%s attempt %d/%d failed: %s", what, attempt, MAX_RETRIES + 1, err)
                 messages = messages + [
                     {"role": "assistant", "content": text},
                     {"role": "user", "content": f"That answer was invalid ({err}). "
                                                 "Reply again with JSON only, in exactly the requested shape."}]
                 continue
-            attempts.append({"attempt": attempt, "cache_key": key, "ok": True, "error": None})
-            return data, attempts
+            attempts.append({"attempt": attempt, "cache_key": key, "raw_sha256": _sha256(text), "ok": True,
+                             "error": None})
+            return data, attempts          # attempts[-1] is the accepted response
         summary = "; ".join(f"#{a['attempt']}: {a['error']}" for a in attempts)
         raise ProviderError(f"{what}: no valid response after {MAX_RETRIES + 1} attempts ({summary})")
 
@@ -522,7 +685,16 @@ class LLMProvider:
                                             PATCHES_SCHEMA, "draft_patches", at_most_n)
         if len(data["patches"]) < n:
             log.warning("draft_patches: asked for %d patches, model returned %d", n, len(data["patches"]))
-        patches = [Patch(candidate_id=f"{fault_id}-{self.mode}-{i}", diff=p["diff"], explanation=p["explanation"],
-                         provider_mode=self.mode, model=self.model, attempts=attempts)
-                   for i, p in enumerate(data["patches"], start=1)]
+        raw_sha = attempts[-1]["raw_sha256"]
+        targets = {c.file for c in diagnosis.causes}
+        patches = []
+        for i, p in enumerate(data["patches"], start=1):
+            patch = apply_format_check(
+                Patch(candidate_id=f"{fault_id}-{self.mode}-{i}", diff=p["diff"], explanation=p["explanation"],
+                      provider_mode=self.mode, model=self.model, attempts=attempts, raw_output_sha256=raw_sha),
+                targets)
+            if patch.format_status != "raw_valid":
+                log.info("patch %s format %s (%s; rules %s)", patch.candidate_id, patch.format_status,
+                         "; ".join(patch.format_problems), patch.normalizer_rules)
+            patches.append(patch)
         return check_patches(patches, fault_id, self.repo)
