@@ -171,7 +171,7 @@ def test_replay_mode_reads_cache_and_makes_no_network_call(tmp_path, no_network)
     assert diag.provider_mode == "replay" and diag.model == "test-model"
     assert (diag.causes[0].file, diag.causes[0].line) == (SERVICE, 46)
     assert diag.attempts == [{"attempt": 1, "cache_key": key, "raw_sha256": sha(response), "ok": True,
-                              "error": None}]
+                              "error": None, "parse_repairs": []}]
 
 
 def test_replay_cache_miss_is_a_clear_error(tmp_path, no_network):
@@ -415,3 +415,32 @@ def test_replay_entry_without_matching_version_field_is_refused(tmp_path, no_net
     (tmp_path / f"{key}.json").write_text(json.dumps({"key": key, "response": "{}"}), encoding="utf-8")
     with pytest.raises(ProviderError, match="version mismatch.*cache_key_version=None"):
         prov.diagnose(incident, sources())
+
+
+# --------------------------------------------------------------------------- recorded parse repairs, rate limits
+
+def test_parse_json_records_every_repair():
+    assert providers._parse_json('{"a": 1}') == ({"a": 1}, [])
+    assert providers._parse_json('```json\n{"a": 1}\n```') == ({"a": 1}, ["code_fence_removed"])
+    data, rep = providers._parse_json('{"causes":[{"rank":1}]}]')        # gpt-oss-120b's stray bracket
+    assert data == {"causes": [{"rank": 1}]} and rep == ["trailing_text_ignored:']'"]
+    data, rep = providers._parse_json('Here you go: {"a": 2} thanks')
+    assert data == {"a": 2} and rep[0] == "leading_text_ignored" and rep[1].startswith("trailing_text_ignored")
+    with pytest.raises(ValueError):
+        providers._parse_json("no json here")
+    with pytest.raises(ValueError):
+        providers._parse_json('{"a": ')
+
+
+def test_rate_limit_waits_with_retry_after_and_is_recorded(monkeypatch):
+    waited = []
+    monkeypatch.setattr(providers, "_sleep", lambda s: waited.append(s))
+    resp = requests.Response()
+    resp.status_code, resp.headers["Retry-After"] = 429, "7"
+    assert providers._rate_limit_wait(requests.HTTPError(response=resp), 1) == 7.0 and waited == [7.0]
+    resp.headers["Retry-After"] = "999"
+    assert providers._rate_limit_wait(requests.HTTPError(response=resp), 1) == providers.RATE_LIMIT_MAX_WAIT_S
+    other = requests.Response()
+    other.status_code = 404
+    assert providers._rate_limit_wait(requests.HTTPError(response=other), 1) is None
+    assert providers._rate_limit_wait(requests.ConnectionError("x"), 1) is None

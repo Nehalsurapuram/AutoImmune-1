@@ -48,6 +48,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -471,12 +472,50 @@ def _sources_block(source_files: dict[str, str]) -> str:
     return "\n".join(parts)
 
 
-def _parse_json(text: str):
+def _parse_json(text: str) -> tuple[object, list[str]]:
+    """Parse a model reply as JSON. Returns (data, repairs). Deterministic repairs, each RECORDED in the attempt:
+    code_fence_removed, leading_text_ignored (text before the first '{'), trailing_text_ignored:<what> (a complete
+    JSON value followed by anything else, e.g. a stray ']'). Anything else raises ValueError."""
+    repairs: list[str] = []
     stripped = text.strip()
     fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", stripped, re.DOTALL)
     if fence:
         stripped = fence.group(1)
-    return json.loads(stripped)
+        repairs.append("code_fence_removed")
+    try:
+        return json.loads(stripped), repairs
+    except json.JSONDecodeError:
+        pass
+    start = stripped.find("{")
+    if start < 0:
+        raise ValueError("no JSON object in the reply")
+    if start > 0:
+        repairs.append("leading_text_ignored")
+    data, end = json.JSONDecoder().raw_decode(stripped[start:])     # raises ValueError if no complete value
+    rest = stripped[start + end:].strip()
+    if rest:
+        repairs.append(f"trailing_text_ignored:{rest[:40]!r}")
+    return data, repairs
+
+
+RATE_LIMIT_MAX_WAIT_S = 30
+_sleep = time.sleep          # patched in tests
+
+
+def _rate_limit_wait(exc: Exception, attempt: int) -> float | None:
+    """On HTTP 429 wait before the next bounded retry: Retry-After if given, else 5 s x attempt, capped. Returns the
+    seconds waited (recorded in the attempt), or None if this was not a rate limit."""
+    resp = getattr(exc, "response", None)
+    if not isinstance(exc, requests.HTTPError) or resp is None or resp.status_code != 429:
+        return None
+    try:
+        wait = float(resp.headers.get("Retry-After", ""))
+    except (TypeError, ValueError):
+        wait = 5.0 * attempt
+    wait = max(0.0, min(wait, RATE_LIMIT_MAX_WAIT_S))
+    log.warning("rate limited (HTTP 429); waiting %.0f s before retrying", wait)
+    _sleep(wait)
+    return wait
 
 
 class LLMProvider:
@@ -594,12 +633,13 @@ class LLMProvider:
                 raise
             except (requests.RequestException, KeyError, IndexError, ValueError) as e:
                 err = f"transport error: {type(e).__name__}: {e}"
+                waited = _rate_limit_wait(e, attempt) if attempt <= MAX_RETRIES else None
                 attempts.append({"attempt": attempt, "cache_key": key, "raw_sha256": None, "ok": False,
-                                 "error": err})
+                                 "error": err, "waited_s": waited})
                 log.warning("%s attempt %d/%d failed: %s", what, attempt, MAX_RETRIES + 1, err)
                 continue
             try:
-                data = _parse_json(text)
+                data, repairs = _parse_json(text)
                 jsonschema.validate(data, schema)
                 if extra_check:
                     extra_check(data)
@@ -614,7 +654,9 @@ class LLMProvider:
                                                 "Reply again with JSON only, in exactly the requested shape."}]
                 continue
             attempts.append({"attempt": attempt, "cache_key": key, "raw_sha256": _sha256(text), "ok": True,
-                             "error": None})
+                             "error": None, "parse_repairs": repairs})
+            if repairs:
+                log.info("%s accepted with recorded parse repairs %s", what, repairs)
             return data, attempts          # attempts[-1] is the accepted response
         summary = "; ".join(f"#{a['attempt']}: {a['error']}" for a in attempts)
         raise ProviderError(f"{what}: no valid response after {MAX_RETRIES + 1} attempts ({summary})")
