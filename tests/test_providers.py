@@ -484,4 +484,4 @@ def test_full_apply_patch_format_is_converted_and_end_of_file_context_is_real():
     fixed, rules = providers.normalize_diff(diff, set(), {SRC_PATH: SRC})
     assert rules[:2] == ["apply_patch_file_headers", "drop_patch_markers"] and "compute_hunk_ranges" in rules
     assert fixed.startswith(f"--- a/{SRC_PATH}\n+++ b/{SRC_PATH}\n") and providers.validate_diff_structure(fixed) == []
-    assert "@@ -3,4 +3,4 @@" in fixed            # lines 3-6 of a 6-line file: no line 7
+    assert "@@ -2,5 +2,5 @@" in fixed            # 3 context lines + lines 5-6 of a 6-line file: no phantom line 7
