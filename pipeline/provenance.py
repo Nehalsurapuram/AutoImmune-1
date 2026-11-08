@@ -24,12 +24,20 @@ REPO = Path(__file__).resolve().parents[1]
 PROVENANCE_VERSION = 1
 
 
-def _git(args: list[str], repo: Path) -> str | None:
+def _git(args: list[str], repo: Path, strip: bool = True) -> str | None:
     try:
         r = subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True, timeout=15)
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return None
-    return r.stdout.strip() if r.returncode == 0 else None
+    if r.returncode != 0:
+        return None
+    return r.stdout.strip() if strip else r.stdout
+
+
+def dirty_files(porcelain: str) -> list[str]:
+    """Paths from `git status --porcelain` (format 'XY path'). The text must not be stripped first: a leading
+    space is part of the status code of the first line."""
+    return [ln[3:] for ln in porcelain.splitlines() if ln.strip()]
 
 
 def code_sha256(repo: Path = REPO) -> str:
@@ -62,14 +70,14 @@ def docker_server_version() -> str | None:
 
 def collect(cfg: dict, repo: Path = REPO, env: dict | None = None) -> dict:
     env = os.environ if env is None else env
-    porcelain = _git(["status", "--porcelain"], repo)
-    dirty_files = None if porcelain is None else [ln[3:] for ln in porcelain.splitlines() if ln.strip()]
+    porcelain = _git(["status", "--porcelain"], repo, strip=False)
+    changed = None if porcelain is None else dirty_files(porcelain)
     return {
         "provenance_version": PROVENANCE_VERSION,
         "git_head": _git(["rev-parse", "HEAD"], repo),
         "git_branch": _git(["rev-parse", "--abbrev-ref", "HEAD"], repo),
-        "git_dirty": None if dirty_files is None else bool(dirty_files),
-        "git_dirty_files": dirty_files,
+        "git_dirty": None if changed is None else bool(changed),
+        "git_dirty_files": changed,
         "code_sha256": code_sha256(repo),
         "prompts_sha256": prompts_sha256(),
         "config_sha256": config_sha256(cfg),

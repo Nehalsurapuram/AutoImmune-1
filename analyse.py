@@ -49,6 +49,7 @@ GATES = ("V0", "V1", "V2", "V3")
 DECISIONS = ("AUTO_APPLY", "ESCALATE", "REJECT")
 LLM_MODES = ("live", "replay")
 COHORTS = ("scripted", "llm")
+STAGED_KINDS = ("slow",)   # scripted candidates planted to demonstrate rollback
 Z95 = 1.959963984540054
 
 
@@ -312,7 +313,10 @@ def analyse(evidence: Path, faults_dir: Path, runs_dir: Path | None = None) -> t
         dep_rows.append([cohort_of(r), r["run_id"], r["fault_id"], r["candidate_id"], r.get("candidate_kind") or "",
                          r["decision"], r.get("approval_source") or "", outcome, r.get("recovery_s"), r["timestamp"]])
         if r.get("rolled_back"):
-            rb_rows.append(["staged" if info.get("staged") else "real", r["run_id"], r["fault_id"],
+            # staged = planted for the rollback demo: labels.json says so, or the scripted candidate was built as
+            # slow.diff (planted by construction, see pipeline/record.py). Never counted as a real catch.
+            staged = info.get("staged") or (cohort_of(r) == "scripted" and r.get("candidate_kind") in STAGED_KINDS)
+            rb_rows.append(["staged" if staged else "real", r["run_id"], r["fault_id"],
                             r["candidate_id"], info.get("label", "unlabelled"), r["recovery_s"], r["timestamp"]])
     files["deployments.csv"] = csv_text(["cohort", "run_id", "fault", "candidate_id", "candidate_kind", "decision",
                                          "approval_source", "outcome", "recovery_s", "timestamp"], dep_rows)
@@ -440,7 +444,8 @@ def analyse(evidence: Path, faults_dir: Path, runs_dir: Path | None = None) -> t
     md += ["## d) Deployments and rollbacks", "",
            f"Deployed rows: **{len(dep_rows)}** (promoted {sum(r[7] == 'promoted' for r in dep_rows)}, rolled back "
            f"{len(rb_rows)}). Real (unplanned) rollbacks: **{sum(r[0] == 'real' for r in rb_rows)}**; staged "
-           f"(`staged: true` in labels.json): **{sum(r[0] == 'staged' for r in rb_rows)}**. A promotion means the "
+           f"(planted demo: `staged: true` in labels.json or a `slow` candidate, never a real catch): "
+           f"**{sum(r[0] == 'staged' for r in rb_rows)}**. A promotion means the "
            "health window passed, not that the patch is correct.", "",
            md_table(["cohort", "run", "fault", "candidate", "kind", "decision", "approval", "outcome", "recovery (s)",
                      "timestamp"], dep_rows), "",

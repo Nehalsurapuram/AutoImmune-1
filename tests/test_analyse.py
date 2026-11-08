@@ -221,3 +221,14 @@ def test_scripted_approvals_are_not_counted_as_human(world):
                     approval_source="scripted_test")])
     _, report = analyse.analyse(ev, tmp / "faults")
     assert "**0 human_cli**" in report and "**0 human_relayed**" in report and "**1 scripted_test**" in report
+
+
+def test_slow_kind_rollback_is_staged_even_without_labels(tmp_path):
+    """No labels.json: a rollback of the planted slow candidate must still be 'staged', never a real catch."""
+    ev = tmp_path / "evidence.jsonl"
+    ev.write_text(json.dumps(row("F06", "F06-scripted-7509cb64", candidate_kind="slow", patch_mode="scripted",
+                                 deployed=True, rolled_back=True, recovery_s=4.0)) + "\n")
+    (tmp_path / "faults").mkdir()
+    files, report = analyse.analyse(ev, tmp_path / "faults")
+    assert files["rollbacks.csv"].splitlines()[1].startswith("staged,")
+    assert "Real (unplanned) rollbacks: **0**" in report

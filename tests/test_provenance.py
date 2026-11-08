@@ -37,3 +37,14 @@ def test_collect_records_model_but_never_the_api_key(tmp_path):
 def test_config_hash_is_order_independent():
     assert provenance.config_sha256({"a": 1, "b": 2}) == provenance.config_sha256({"b": 2, "a": 1})
     assert provenance.config_sha256({"a": 1}) != provenance.config_sha256({"a": 2})
+
+
+def test_dirty_files_keeps_the_first_character_of_the_first_path():
+    """Regression: stripping porcelain output turned ' M docs/x' into 'M docs/x' and lost the 'd'."""
+    porcelain = " M docs/audit/acceptance.json\nM  pipeline/x.py\n?? new.txt\n"
+    assert provenance.dirty_files(porcelain) == ["docs/audit/acceptance.json", "pipeline/x.py", "new.txt"]
+
+
+def test_collect_on_this_repo_reports_full_paths():
+    p = provenance.collect({})
+    assert p["git_dirty_files"] is None or all(not f.startswith(("ocs/", "ipeline/", "ests/")) for f in p["git_dirty_files"])
