@@ -162,12 +162,76 @@ def test_run_ledger_lists_failed_runs(world):
     (runs / "new").mkdir()
     (runs / "new" / "run.json").write_text(json.dumps({"fault_id": "F99", "outcome": "completed",
                                                          "provenance": {"git_head": "abcdef0123", "git_dirty": True}}))
+    (runs / "clean_run").mkdir()
+    (runs / "clean_run" / "run.json").write_text(json.dumps({
+        "fault_id": "F99", "outcome": "completed",
+        "provenance": {
+            "git_head": "0123456789abcdef0123456789abcdef01234567",
+            "git_dirty": False,
+            "code_sha256": "code_hash_value",
+            "prompts_sha256": "prompt_hash_value",
+            "config_sha256": "config_hash_value",
+        }
+    }))
+    (runs / "unknown_run").mkdir()
+    (runs / "unknown_run" / "run.json").write_text(json.dumps({
+        "fault_id": "F99", "outcome": "completed",
+        "provenance": {"git_head": "fedcba9876", "git_dirty": None}
+    }))
+    (runs / "partial_modern").mkdir()
+    (runs / "partial_modern" / "run.json").write_text(json.dumps({
+        "fault_id": "F99", "outcome": "completed",
+        "provenance": {"git_dirty": False}
+    }))
     (runs / "pytest-x").mkdir()
-    files, _ = analyse.analyse(ev, tmp / "faults", runs)
+    files, report = analyse.analyse(ev, tmp / "faults", runs)
     ledger = {r["run_id"]: r for r in table(files, "runs.csv")}
-    assert set(ledger) == {"r1", "crashed", "new"}
+    assert set(ledger) == {"r1", "crashed", "new", "clean_run", "unknown_run", "partial_modern"}
     assert ledger["crashed"]["outcome"] == "error at step 4 (ProviderError)"
     assert ledger["new"]["code"] == "abcdef0 +uncommitted" and ledger["r1"]["code"] == "not recorded (pre-S0)"
+
+    # Pre-S0 provenance
+    assert ledger["r1"]["git_head"] == "not recorded (pre-S0)"
+    assert ledger["r1"]["git_dirty"] == "not recorded (pre-S0)"
+    assert ledger["r1"]["code_sha256"] == "not recorded (pre-S0)"
+    assert ledger["r1"]["prompts_sha256"] == "not recorded (pre-S0)"
+    assert ledger["r1"]["config_sha256"] == "not recorded (pre-S0)"
+
+    # Crashed run (missing run.json)
+    assert ledger["crashed"]["git_head"] == "not recorded (pre-S0)"
+    assert ledger["crashed"]["git_dirty"] == "not recorded (pre-S0)"
+    assert ledger["crashed"]["code_sha256"] == "not recorded (pre-S0)"
+    assert ledger["crashed"]["prompts_sha256"] == "not recorded (pre-S0)"
+    assert ledger["crashed"]["config_sha256"] == "not recorded (pre-S0)"
+
+    # Modern provenance: dirty=True preserves full SHA and dirty string; missing modern fields are "not recorded"
+    assert ledger["new"]["git_head"] == "abcdef0123"
+    assert ledger["new"]["git_dirty"] == "dirty"
+    assert ledger["new"]["code_sha256"] == "not recorded"
+    assert ledger["new"]["prompts_sha256"] == "not recorded"
+    assert ledger["new"]["config_sha256"] == "not recorded"
+
+    # Modern provenance: dirty=False, full 40-char SHA and hashes populated
+    assert ledger["clean_run"]["git_head"] == "0123456789abcdef0123456789abcdef01234567"
+    assert ledger["clean_run"]["git_dirty"] == "clean"
+    assert ledger["clean_run"]["code_sha256"] == "code_hash_value"
+    assert ledger["clean_run"]["prompts_sha256"] == "prompt_hash_value"
+    assert ledger["clean_run"]["config_sha256"] == "config_hash_value"
+
+    # Modern provenance: dirty=None -> unknown, missing hashes -> not recorded
+    assert ledger["unknown_run"]["git_dirty"] == "unknown"
+    assert ledger["unknown_run"]["git_head"] == "fedcba9876"
+    assert ledger["unknown_run"]["code_sha256"] == "not recorded"
+    assert ledger["unknown_run"]["prompts_sha256"] == "not recorded"
+    assert ledger["unknown_run"]["config_sha256"] == "not recorded"
+
+    # Modern provenance: missing git_head -> not recorded
+    assert ledger["partial_modern"]["git_head"] == "not recorded"
+    assert ledger["partial_modern"]["git_dirty"] == "clean"
+    assert ledger["partial_modern"]["code_sha256"] == "not recorded"
+
+    # Report table verification
+    assert "| git_head | git_dirty | code_sha256 | prompts_sha256 | config_sha256 |" in report
 
 
 def test_output_is_reproducible_byte_for_byte(world, capsys):

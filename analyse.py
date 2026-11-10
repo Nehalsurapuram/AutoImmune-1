@@ -246,8 +246,30 @@ def run_ledger(runs_dir: Path | None, rows: list[dict]) -> list[list]:
         prov = meta.get("provenance") or {}
         code = ("not recorded (pre-S0)" if not prov else
                 f"{(prov.get('git_head') or '?')[:7]}{' +uncommitted' if prov.get('git_dirty') else ''}")
+        if not prov:
+            git_head = "not recorded (pre-S0)"
+            git_dirty = "not recorded (pre-S0)"
+            code_sha256 = "not recorded (pre-S0)"
+            prompts_sha256 = "not recorded (pre-S0)"
+            config_sha256 = "not recorded (pre-S0)"
+        else:
+            git_head = prov.get("git_head") or "not recorded"
+            if "git_dirty" not in prov:
+                git_dirty = "not recorded"
+            elif prov["git_dirty"] is True:
+                git_dirty = "dirty"
+            elif prov["git_dirty"] is False:
+                git_dirty = "clean"
+            elif prov["git_dirty"] is None:
+                git_dirty = "unknown"
+            else:
+                git_dirty = "not recorded"
+            code_sha256 = prov.get("code_sha256") or "not recorded"
+            prompts_sha256 = prov.get("prompts_sha256") or "not recorded"
+            config_sha256 = prov.get("config_sha256") or "not recorded"
         out.append([d.name, meta.get("fault_id", ""), meta.get("diag_mode", ""), meta.get("patch_mode", ""),
-                    outcome, n_rows, agg.get(d.name, 0), code])
+                    outcome, n_rows, agg.get(d.name, 0), code,
+                    git_head, git_dirty, code_sha256, prompts_sha256, config_sha256])
     return out
 
 
@@ -458,7 +480,8 @@ def analyse(evidence: Path, faults_dir: Path, runs_dir: Path | None = None) -> t
     # f) run ledger
     ledger = run_ledger(runs_dir, rows)
     files["runs.csv"] = csv_text(["run_id", "fault", "diag_mode", "patch_mode", "outcome", "run_rows",
-                                  "rows_in_results", "code"], ledger)
+                                  "rows_in_results", "code", "git_head", "git_dirty", "code_sha256",
+                                  "prompts_sha256", "config_sha256"], ledger)
 
     # ---------------------------------------------------------------- report
     repeats = sum(u["_repeats"] - 1 for u in units)
@@ -559,7 +582,8 @@ def analyse(evidence: Path, faults_dir: Path, runs_dir: Path | None = None) -> t
            (f"{len(ledger)} run directories (pytest gate fixtures excluded); {len(ledger_issues)} did not complete. "
             "Failed runs have no evidence rows, so they are listed here instead of disappearing." if runs_dir
             else "Not generated (no runs directory given)."), "",
-           md_table(["run", "fault", "diag", "patch", "outcome", "run rows", "rows in results", "code"], ledger), ""]
+           md_table(["run", "fault", "diag", "patch", "outcome", "run rows", "rows in results", "code",
+                     "git_head", "git_dirty", "code_sha256", "prompts_sha256", "config_sha256"], ledger), ""]
     report = "\n".join(md)
     files["pilot_report.md"] = report
     return files, report
