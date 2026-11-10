@@ -129,7 +129,7 @@ class Provider(Protocol):
     def diagnose(self, incident: dict, source_files: dict[str, str]) -> Diagnosis: ...
 
     def draft_patches(self, diagnosis: Diagnosis, source_files: dict[str, str], fault_id: str,
-                      n: int | None = 3) -> list[Patch]: ...
+                      n: int | None = 3, incident: dict | None = None) -> list[Patch]: ...
 
 
 def get_provider(mode: str, **kwargs) -> Provider:
@@ -461,7 +461,7 @@ class RuleProvider:
                              f"oracle localisation from faults/{fault_id}/fault.json diagnosed_file",
                       evidence=json.dumps(detail, sort_keys=True))]
 
-    def draft_patches(self, diagnosis, source_files, fault_id, n=3):
+    def draft_patches(self, diagnosis, source_files, fault_id, n=3, incident=None):
         raise ProviderError("rule mode only diagnoses; use scripted, replay or live for draft_patches")
 
 
@@ -477,7 +477,7 @@ class ScriptedProvider:
         raise ProviderError("scripted mode only drafts patches; use rule, replay or live for diagnose")
 
     def draft_patches(self, diagnosis: Diagnosis, source_files: dict[str, str], fault_id: str,
-                      n: int | None = 3) -> list[Patch]:
+                      n: int | None = 3, incident: dict | None = None) -> list[Patch]:
         """All of faults/<id>/candidates/*.diff in file-name order; n caps the count (None = all)."""
         cand_dir = self.repo / "faults" / fault_id / "candidates"
         files = sorted(cand_dir.glob("*.diff"))      # *.diff only: labels.json is never opened
@@ -546,9 +546,29 @@ PATCH_SYSTEM = (
     "You fix faults in order-service, a Java 17 Spring Boot service. "
     "Answer with JSON only, no prose and no code fences, in exactly this shape:\n"
     '{"patches": [{"diff": "<unified diff>", "explanation": "<one or two sentences>"}]}\n'
-    "Each diff must be a git-style unified diff with paths relative to the repository root "
-    "(--- a/app/... +++ b/app/...), apply cleanly to the files shown, and change as little as possible. "
-    "Give exactly {n} distinct alternative patches."
+    "Generate between 1 and {n} candidate patches. Correctness is more important than quantity. "
+    "Never invent unrelated alternatives just to reach the requested count.\n"
+    "PATCH FORMAT REQUIREMENTS:\n"
+    "1. Every diff MUST include complete Git-style file headers:\n"
+    "--- a/app/path/File.java\n"
+    "+++ b/app/path/File.java\n"
+    "2. Every hunk must have valid unified-diff line numbers and context.\n"
+    "3. Paths must be relative to the repository root and match the supplied source files exactly.\n"
+    "4. Never return a hunk without its file headers.\n"
+    "5. Never modify files that were not supplied in the source context.\n"
+    "IMPORTANT REPAIR INSTRUCTIONS:\n"
+    "1. Compare the incident's observed behaviour with its expected behaviour.\n"
+    "2. Trace the failure to the actual faulty condition or logic in the supplied source code.\n"
+    "3. Prioritise the highest-ranked diagnosed cause. Modify another diagnosed file only "
+    "when the source evidence supports doing so.\n"
+    "4. Do not change constants, calculations, or unrelated logic unless the evidence "
+    "shows they are faulty.\n"
+    "5. Pay particular attention to comparison operators and boundary conditions when "
+    "the incident involves a threshold or exact input value.\n"
+    "6. Preserve existing business rules and reuse existing constants where appropriate.\n"
+    "7. Each additional candidate must be a genuinely different, evidence-based repair. "
+    "Do not repeat the same diff with different explanations or line numbers.\n"
+    "8. Never assume a proposed change is correct merely because it looks plausible.\n"
 )
 
 
@@ -636,17 +656,46 @@ class LLMProvider:
     # ---- prompts
 
     def diagnosis_messages(self, incident: dict, source_files: dict[str, str]) -> list[dict]:
-        shown = {k: v for k, v in incident.items() if k != "fault_id"}
+        allowed_incident_fields = ("kind", "endpoint", "status", "expected", "actual")
+        shown = {
+            k: incident[k]
+            for k in allowed_incident_fields
+            if k in incident
+        }
         user = ("Incident:\n" + json.dumps(shown, indent=2, sort_keys=True, default=str)
                 + "\n\nSource files:\n" + _sources_block(source_files))
         return [{"role": "system", "content": DIAGNOSE_SYSTEM}, {"role": "user", "content": user}]
 
-    def patch_messages(self, diagnosis: Diagnosis, source_files: dict[str, str], n: int) -> list[dict]:
+    def patch_messages(
+        self,
+        diagnosis: Diagnosis,
+        source_files: dict[str, str],
+        n: int,
+        incident: dict | None = None,
+    ) -> list[dict]:
         causes = [asdict(c) for c in diagnosis.causes]
-        user = ("Diagnosis:\n" + json.dumps({"causes": causes}, indent=2, sort_keys=True)
-                + "\n\nSource files:\n" + _sources_block(source_files))
-        return [{"role": "system", "content": PATCH_SYSTEM.replace("{n}", str(n))},
-                {"role": "user", "content": user}]
+        # Only operational incident information is exposed.
+        # Never send fault IDs or evaluator/oracle metadata.
+        allowed_incident_fields = (
+            "kind", "endpoint", "status", "expected", "actual"
+        )
+        shown = {
+            k: incident[k]
+            for k in allowed_incident_fields
+            if incident is not None and k in incident
+        }
+        user = (
+            "Incident:\n"
+            + json.dumps(shown, indent=2, sort_keys=True, default=str)
+            + "\n\nDiagnosis:\n"
+            + json.dumps({"causes": causes}, indent=2, sort_keys=True)
+            + "\n\nSource files:\n"
+            + _sources_block(source_files)
+        )
+        return [
+            {"role": "system", "content": PATCH_SYSTEM.replace("{n}", str(n))},
+            {"role": "user", "content": user},
+        ]
 
     # ---- cache
 
@@ -803,16 +852,26 @@ class LLMProvider:
                          attempts=all_attempts, samples=sample_records,
                          samples_disagree=samples_disagree)
 
-    def draft_patches(self, diagnosis: Diagnosis, source_files: dict[str, str], fault_id: str,
-                      n: int | None = 3) -> list[Patch]:
+    def draft_patches(
+        self,
+        diagnosis: Diagnosis,
+        source_files: dict[str, str],
+        fault_id: str,
+        n: int | None = 3,
+        incident: dict | None = None,
+    ) -> list[Patch]:
         n = 3 if n is None else n
 
         def at_most_n(data):
             if len(data["patches"]) > n:
                 raise ValueError(f"asked for {n} patches, got {len(data['patches'])}")
 
-        data, attempts = self._request_json(self.patch_messages(diagnosis, source_files, n),
-                                            PATCHES_SCHEMA, "draft_patches", at_most_n)
+        data, attempts = self._request_json(
+            self.patch_messages(diagnosis, source_files, n, incident=incident),
+            PATCHES_SCHEMA,
+            "draft_patches",
+            at_most_n,
+        )
         if len(data["patches"]) < n:
             log.warning("draft_patches: asked for %d patches, model returned %d", n, len(data["patches"]))
         raw_sha = attempts[-1]["raw_sha256"]

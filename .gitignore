@@ -16,7 +16,6 @@ runs/*
 !runs/.gitkeep
 cache/*
 !cache/.gitkeep
-!cache/*.json
 results/*
 !results/.gitkeep
 

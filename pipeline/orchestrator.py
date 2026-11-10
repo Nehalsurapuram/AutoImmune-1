@@ -221,8 +221,13 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
             print(f"  diagnosis: {top.file}:{top.line} (oracle_localisation={diagnosis.oracle_localisation}, "
                   f"top1_hit={top1_hit}, top3_hit={top3_hit}, "
                   f"samples={len(diagnosis.samples)}, samples_disagree={diagnosis.samples_disagree})")
-            patches = get_provider(patch_mode).draft_patches(diagnosis, sources, fault,
-                                                             n=None if patch_mode == "scripted" else 3)
+            patches = get_provider(patch_mode).draft_patches(
+                diagnosis,
+                sources,
+                fault,
+                n=None if patch_mode == "scripted" else 3,
+                incident=incident,
+            )
             _write(run_dir / "patches.json", [p.to_dict() for p in patches])
             print(f"  {len(patches)} candidates: {', '.join(p.candidate_id for p in patches)}")
 

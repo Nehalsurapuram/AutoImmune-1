@@ -254,12 +254,18 @@ def test_prompts_never_carry_fault_ids_or_oracle_words():
     incident = {"fault_id": "F06", "kind": "probe_mismatch", "rule": "probe_mismatch",
                 "endpoint": "/api/orders/2/discount", "status": 200, "expected": "900.00", "actual": "1000.00"}
     diag = Diagnosis(causes=[Cause(rank=1, file=SERVICE, line=40, reason="threshold check", evidence="probe returned 1000.00")], provider_mode="replay")
-    messages = p.diagnosis_messages(incident, sources()) + p.patch_messages(diag, sources(), 3)
+    messages = (
+        p.diagnosis_messages(incident, sources())
+        + p.patch_messages(diag, sources(), 3, incident=incident)
+    )
     text = json.dumps(messages)
     assert not re.search(r"\bF\d\d\b", text), "fault id reached the prompt"
     for word in ("hidden_tests", "HiddenTest", "labels.json", "overfitting", "regressive", "insecure",
                  "ineffective", "candidate_kind", "expected_symptom", "diagnosed_file"):
         assert word not in text, word
+    assert "/api/orders/2/discount" in text
+    assert "900.00" in text
+    assert "1000.00" in text
 
 
 # --------------------------------------------------------------------------- S2: diff structure / normalizer
