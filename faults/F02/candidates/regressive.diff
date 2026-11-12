@@ -1,0 +1,10 @@
+diff --git a/app/src/main/java/com/autoimmune/orders/OrderService.java b/app/src/main/java/com/autoimmune/orders/OrderService.java
+--- a/app/src/main/java/com/autoimmune/orders/OrderService.java
++++ b/app/src/main/java/com/autoimmune/orders/OrderService.java
+@@ -49,5 +49,5 @@ public class OrderService {
+         String name = customer.trim();
+         return repository.findAll().stream()
+-                .filter(o -> o.customer().equals(name))
++                .filter(o -> false)
+                 .toList();
+     }

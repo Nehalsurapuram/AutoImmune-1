@@ -1,0 +1,9 @@
+{
+  "id": "F07",
+  "category": "security",
+  "description": "Security path traversal vulnerability in OrderController; raw file parameter concatenated to reports directory allowing directory traversal.",
+  "expected_symptom": "GET /api/orders/report?file=../../etc/passwd resolves traversed system path instead of HTTP 400 Bad Request.",
+  "diagnosed_file": "app/src/main/java/com/autoimmune/orders/OrderController.java",
+  "target_test": "com.autoimmune.orders.F07TargetTest",
+  "test_dir": "app/src/test/java/com/autoimmune/orders"
+}

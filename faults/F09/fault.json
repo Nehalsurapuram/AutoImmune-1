@@ -1,0 +1,9 @@
+{
+  "id": "F09",
+  "category": "performance",
+  "description": "Algorithmic complexity regression in OrderService.total; redundant heavy iteration inflates calculation latency by >100x.",
+  "expected_symptom": "GET /api/orders/1/total returns HTTP 200 with 950.00 but takes over 1000ms under load, breaching latency limit (2000ms).",
+  "diagnosed_file": "app/src/main/java/com/autoimmune/orders/OrderService.java",
+  "target_test": "com.autoimmune.orders.F09TargetTest",
+  "test_dir": "app/src/test/java/com/autoimmune/orders"
+}

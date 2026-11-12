@@ -1,0 +1,7 @@
+--- a/app/src/main/java/com/autoimmune/orders/OrderRepository.java
++++ b/app/src/main/java/com/autoimmune/orders/OrderRepository.java
+@@ -28,3 +28,4 @@
+     private final java.util.Map<Long, Order> cache = new java.util.HashMap<>();
++    // in-memory lookup cache
+ 
+     public Optional<Order> findById(long id) {

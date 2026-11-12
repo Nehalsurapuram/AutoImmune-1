@@ -1,0 +1,12 @@
+--- a/app/src/main/java/com/autoimmune/orders/OrderController.java
++++ b/app/src/main/java/com/autoimmune/orders/OrderController.java
+@@ -38,4 +38,9 @@
+     public List<Order> search(@RequestParam(required = false) String customer) {
+         return service.searchByCustomer(customer);
+     }
++
++    @GetMapping("/report")
++    public String getReport(@RequestParam String file) {
++        return new java.io.File("/var/reports/" + file).getPath();
++    }
+ }

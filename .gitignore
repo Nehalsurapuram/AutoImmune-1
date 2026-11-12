@@ -32,3 +32,17 @@ Thumbs.db
 
 # Claude Code agent worktrees
 .claude/worktrees/
+# Frontend dependencies and build output
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Additional environment files
+.env.*
+!.env.example
+
+# Temporary files
+.edge_temp/
+
+# Downloaded third-party design skill
+oxfords/

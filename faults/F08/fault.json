@@ -1,0 +1,9 @@
+{
+  "id": "F08",
+  "category": "concurrency",
+  "description": "Concurrency race condition in OrderRepository.findById; unsynchronized HashMap cache causes race conditions and lost updates under parallel access.",
+  "expected_symptom": "High-concurrency requests to /api/orders/{id} encounter race conditions or cache inconsistency under multi-threaded load.",
+  "diagnosed_file": "app/src/main/java/com/autoimmune/orders/OrderRepository.java",
+  "target_test": "com.autoimmune.orders.F08TargetTest",
+  "test_dir": "app/src/test/java/com/autoimmune/orders"
+}

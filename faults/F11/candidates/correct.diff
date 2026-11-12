@@ -1,0 +1,7 @@
+--- a/app/src/main/java/com/autoimmune/orders/OrderRepository.java
++++ b/app/src/main/java/com/autoimmune/orders/OrderRepository.java
+@@ -15,3 +15,3 @@
+                     new Item("Laptop", new BigDecimal("899.00"), 1),
+-                    new Item("Mouse", new BigDecimal("25.50"), -2))),
++                    new Item("Mouse", new BigDecimal("25.50"), 2))),
+             new Order(2, "bob", List.of(

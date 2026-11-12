@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -61,6 +62,7 @@ def faked(tmp_path, monkeypatch):
     from pipeline import deploy, detector, record, sandbox
     calls, rows = [], []
     state = {"image": "order-service:baseline"}
+    shutil.copytree(Path(__file__).resolve().parents[1] / "config", tmp_path / "config")
     monkeypatch.setattr(orchestrator, "REPO", tmp_path)
     monkeypatch.setattr(orchestrator, "keep_awake", lambda: None)
     monkeypatch.setattr(deploy, "current_image", lambda: state["image"])
@@ -140,6 +142,31 @@ def test_full_run_deploy_each_restores_faulty_build_between_candidates(faked, ca
     results_rows = [r for r, p in rows if p is None]
     assert {r["schema_version"] for r in results_rows} == {2}
     assert len({r["patch_sha256"] for r in results_rows}) == 6
+
+
+def test_gates_only_mode_restores_baseline_and_records_cleanly(faked, capsys):
+    calls, rows, tmp = faked
+    s = orchestrator.run("F06", "rule", "scripted", gates_only=True, run_id="t_gates_only")
+    out = capsys.readouterr().out
+    assert "PRE-DEPLOYMENT EVALUATION (--gates-only)" in out
+    assert "[06/10] CANDIDATE SELECTION (PRE-DEPLOYMENT)" in out
+    assert "[09/10] BASELINE RESTORATION" in out
+    assert "[10/10] EXECUTION SUMMARY (PRE-DEPLOYMENT)" in out
+    assert "[07/10]" not in out and "[08/10]" not in out
+    releases = [c for c in calls if c[0] == "release"]
+    assert len(releases) == 0  # no candidate deployment in gates_only mode
+    switches = [c for c in calls if c[0] == "switch"]
+    assert switches[-1] == ("switch", "order-service:baseline")  # baseline restored at step 9
+    for name in ("run.json", "baseline.json", "faulty_deploy.json", "diagnosis.json", "patches.json",
+                 "choice.json", "summary.json"):
+        assert (tmp / "runs" / "t_gates_only" / name).exists(), name
+    meta = json.loads((tmp / "runs" / "t_gates_only" / "run.json").read_text(encoding="utf-8"))
+    assert meta["outcome"] == "gates_only" and meta["ended_at"] and meta["gates_only"] is True
+    # all candidates should have deployed=False
+    assert len(rows) == 12  # 6 rows to results/ (p is None) and 6 to runs/<id>/
+    results_rows = [r for r, p in rows if p is None]
+    assert all(r["deployed"] is False for r in results_rows)
+    assert len(results_rows) == 6
 
 
 def test_failing_step_stops_with_the_real_error_and_restores_baseline(faked, monkeypatch):

@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Oxfords colour: Tideline (teal world, one ember; weather, travel, data)
+   lead #326E6E, support #CE7D36, pop #C5CFCB
+   light on white: native, nothing moved
+   regenerate: node scripts/palette.mjs Tideline --mode light --ground white */
+
+:root {
+  color-scheme: light;
+  /* neutrals */
+  --page: #FFFFFF; --surface: #FAFAFA; --surface-2: #F3F3F3; --selected: #EBEBEB;
+  --line: #E4E4E4; --line-strong: #909090; --focus: #326E6E; --overlay: #00000066;
+  --text: #161616; --text-2: #484848; --text-3: #6A6A6A; --text-disabled: #6A6A6A;
+  --shadow-1: 0 1px 2px #0000001A, 0 4px 12px #0000000D;
+  --shadow-2: 0 2px 4px #0000001A, 0 12px 32px #0000001F;
+  /* neutral controls */
+  --action: #161616; --action-hover: #222222; --action-pressed: #070707; --on-action: #FFFFFF;
+  --action-disabled: #E4E4E4; --on-action-disabled: #8D8D8D;
+  --control: #EEEEEE; --control-hover: #E1E1E1; --control-pressed: #D4D4D4;
+  /* palette */
+  --lead: #326E6E; --lead-hover: #417D7D; --lead-pressed: #1B5A5A;
+  --on-lead: #FFFFFF; --on-lead-2: #E7FFFF; --lead-line: #86A2A2;
+  --lead-ink: #326E6E; --lead-tint: #DEF6F5;
+  --support: #CE7D36; --support-hover: #E2904A; --support-pressed: #BA6B1F;
+  --on-support: #111111; --on-support-2: #251000; --support-line: #77553A;
+  --support-ink: #A55900; --support-tint: #FFECDE;
+  --pop: #C5CFCB; --pop-hover: #D5DFDB; --pop-pressed: #AFB9B5;
+  --on-pop: #111111; --on-pop-2: #454948; --pop-line: #919694;
+  --pop-ink: #676F6C; --pop-tint: #EDF1EF;
+  /* semantic */
+  --danger: #C31B1F; --danger-hover: #D5322F; --danger-pressed: #A5000F;
+  --on-danger: #FFFFFF; --on-danger-2: #FFF5F3; --danger-line: #C3928C;
+  --danger-ink: #C31B1F; --danger-tint: #FFEBE8;
+  --warning: #F5A91F; --warning-hover: #FFBD58; --warning-pressed: #DB9400;
+  --on-warning: #111111; --on-warning-2: #4C3511; --warning-line: #9A7F5B;
+  --warning-ink: #946300; --warning-tint: #FEEDD7;
+  --success: #007433; --success-hover: #17843F; --success-pressed: #005E28;
+  --on-success: #FFFFFF; --on-success-2: #E8FFEB; --success-line: #80A586;
+  --success-ink: #007433; --success-tint: #E0F7E4;
+  --info: #0065B0; --info-hover: #0074C8; --info-pressed: #00518F;
+  --on-info: #FFFFFF; --on-info-2: #F1F8FF; --info-line: #7F9FC0;
+  --info-ink: #0065B0; --info-tint: #E5F2FF;
+  /* chart */
+  --series-1: #326E6E; --series-2: #CE7D36; --series-3: #164242; --series-4: #904C00;
+  --series-5: #4E8989; --series-6: #505050; --series-muted: #909090;
+
+  /* Typography tokens (Oxfords standard) */
+  --font-page-title: 28px;
+  --font-section-heading: 20px;
+  --font-body: 16px;
+  --font-meta: 14px;
+  --font-code: 14px;
+  --font-diff-lineno: 13px;
+}
+
+@layer base {
+  html {
+    font-size: 16px;
+  }
+
+  body {
+    background-color: var(--page);
+    color: var(--text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    min-height: 100dvh;
+    margin: 0;
+  }
+
+  ::selection {
+    background-color: var(--lead-tint);
+    color: var(--text);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

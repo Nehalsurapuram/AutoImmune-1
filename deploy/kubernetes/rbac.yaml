@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: autoimmune-controller
+  namespace: autoimmune-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: autoimmune-controller-role
+  namespace: autoimmune-system
+rules:
+  - apiGroups: ["autoimmune.io"]
+    resources: ["autoimmuneincidents", "autoimmuneincidents/status"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["argoproj.io"]
+    resources: ["rollouts", "analysisruns"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "events"]
+    verbs: ["get", "list", "watch", "create", "patch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: autoimmune-controller-binding
+  namespace: autoimmune-system
+subjects:
+  - kind: ServiceAccount
+    name: autoimmune-controller
+    namespace: autoimmune-system
+roleRef:
+  kind: Role
+  name: autoimmune-controller-role
+  apiGroup: rbac.authorization.k8s.io

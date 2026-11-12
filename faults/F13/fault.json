@@ -1,0 +1,9 @@
+{
+  "id": "F13",
+  "category": "null_error",
+  "description": "Unchecked Optional dereference in OrderService.get; repository.findById(id).get() throws NoSuchElementException (HTTP 500) for missing orders instead of OrderNotFoundException (HTTP 404).",
+  "expected_symptom": "GET /api/orders/999/total returns HTTP 500 with NoSuchElementException instead of HTTP 404 with OrderNotFoundException.",
+  "diagnosed_file": "app/src/main/java/com/autoimmune/orders/OrderService.java",
+  "target_test": "com.autoimmune.orders.F13TargetTest",
+  "test_dir": "app/src/test/java/com/autoimmune/orders"
+}

@@ -1,0 +1,9 @@
+--- a/app/src/main/java/com/autoimmune/orders/OrderService.java
++++ b/app/src/main/java/com/autoimmune/orders/OrderService.java
+@@ -31,3 +31,6 @@
+         for (Item item : get(id).items()) {
++            for (int i = 0; i < 500000; i++) {
++                sum = sum.add(BigDecimal.ZERO);
++            }
+             sum = sum.add(item.price().multiply(BigDecimal.valueOf(item.qty())));
+         }

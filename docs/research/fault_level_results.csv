@@ -1,0 +1,10 @@
+fault_id,cohort,n_units,b1_auto,b2_auto,b3_auto,b3_escalate,b3_reject,first_stop_v0,first_stop_v1,first_stop_v2,first_stop_v3,first_stop_escalated,survived_not_stopped
+F01,scripted,10,8,6,4,0,6,0,2,2,2,0,4
+F01,llm,9,2,2,1,1,7,6,1,0,0,1,1
+F02,scripted,5,3,2,1,0,4,0,2,1,1,0,1
+F04,scripted,10,8,6,1,3,6,0,2,2,2,3,1
+F04,llm,6,2,2,1,1,4,4,0,0,0,1,1
+F05,scripted,5,4,3,3,0,2,0,1,1,0,0,3
+F06,scripted,12,10,8,6,0,6,0,2,2,2,0,6
+F06,llm,38,3,3,3,0,35,21,14,0,0,0,3
+F07,scripted,5,5,4,3,0,2,0,0,1,1,0,3

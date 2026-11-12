@@ -1,0 +1,15 @@
+diff --git a/app/src/main/java/com/autoimmune/orders/OrderController.java b/app/src/main/java/com/autoimmune/orders/OrderController.java
+index 99118a8..def7cdd 100644
+--- a/app/src/main/java/com/autoimmune/orders/OrderController.java
++++ b/app/src/main/java/com/autoimmune/orders/OrderController.java
+@@ -43,7 +43,8 @@ public class OrderController {
+     public byte[] receipt(@PathVariable long id) throws java.io.IOException {
+         java.io.File file = new java.io.File(System.getProperty("java.io.tmpdir"), "order-receipt-" + id + ".dat");
+         java.nio.file.Files.writeString(file.toPath(), "RECEIPT-" + id);
+-        java.io.InputStream in = new java.io.FileInputStream(file);
+-        return in.readAllBytes();
++        try (java.io.InputStream in = new java.io.FileInputStream(file)) {
++            return new byte[0];
++        }
+     }
+ }

@@ -1,0 +1,9 @@
+--- a/app/src/main/java/com/autoimmune/orders/Item.java
++++ b/app/src/main/java/com/autoimmune/orders/Item.java
+@@ -3,5 +3,4 @@ package com.autoimmune.orders;
+ import java.math.BigDecimal;
+-import com.fasterxml.jackson.annotation.JsonProperty;
+ 
+-public record Item(String name, BigDecimal price, @JsonProperty("quantity") int qty) {
++public record Item(String name, BigDecimal price, int qty) {
+ }

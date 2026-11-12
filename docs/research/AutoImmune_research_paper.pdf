@@ -1,0 +1,2820 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R] /Count 8 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 4 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> /F3 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >> /F4 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> /F5 << /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >> >> >> >>
+endobj
+4 0 obj
+<< /Length 8516 >>
+stream
+q
+1.00 w
+0.060 0.160 0.290 rg
+45.00 768.89 505.28 32.00 re f
+Q
+BT
+/F2 15.00 Tf
+1.000 1.000 1.000 rg
+55.00 778.89 Td
+(AutoImmune: A Risk-Aware, Validation-Gated Framework for AI-Assisted Self-Healing of Microservices) Tj
+ET
+BT
+/F2 8.50 Tf
+0.200 0.300 0.450 rg
+45.00 746.39 Td
+(Authors: AutoImmune Research Engineering Consortium) Tj
+ET
+BT
+/F2 8.50 Tf
+0.200 0.300 0.450 rg
+45.00 730.89 Td
+(Affiliation: Advanced Software Reliability & Autonomous Systems Engineering) Tj
+ET
+BT
+/F2 8.50 Tf
+0.200 0.300 0.450 rg
+45.00 715.39 Td
+(Artifact Repository: https://github.com/autoimmune-project/autoimmune) Tj
+ET
+BT
+/F2 8.50 Tf
+0.200 0.300 0.450 rg
+45.00 699.89 Td
+(Dataset & Reproduction Package: results/evidence.jsonl | tools/reproduce_research.py) Tj
+ET
+q
+1.00 w
+0.850 0.880 0.920 RG
+45.00 688.89 m 550.28 688.89 l S
+Q
+BT
+/F2 12.50 Tf
+0.120 0.250 0.450 rg
+45.00 662.89 Td
+(Abstract) Tj
+ET
+q
+1.20 w
+0.750 0.820 0.920 RG
+45.00 658.89 m 550.28 658.89 l S
+Q
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 639.89 Td
+(Automated program repair \(APR\) powered by Large Language Models \(LLMs\) offers the potential to autonomously mitigate) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 627.39 Td
+(production incidents in cloud microservices, reducing Mean Time to Repair \(MTTR\) from hours to seconds. However,) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 614.89 Td
+(deploying unvalidated or superficially tested AI-generated patches directly into live production services creates catastrophic) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 602.39 Td
+(reliability, operational, and security risks. Existing software engineering paradigms either enforce a fully manual "review-all") Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 589.89 Td
+(policy-introducing human bottlenecks, operator cognitive fatigue, and prolonged downtime-or rely naively on passing visible) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 577.39 Td
+(unit tests, which frequently admit overfitting, regressive, or insecure patches into production.) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 560.89 Td
+(In this paper, we present **AutoImmune**, a hybrid, execution-gated self-healing framework for Java Spring Boot) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 548.39 Td
+(microservices designed to answer the fundamental software reliability question: *How much execution evidence is necessary) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 535.89 Td
+(to deploy an automated patch without human review, and what classes of defects does each validation gate catch?*) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 523.39 Td
+(AutoImmune couples a deterministic, air-gapped four-stage validation pipeline \(Gate V0: syntax and compilation; Gate V1:) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 510.89 Td
+(visible incident reproduction test; Gate V2: full regression test suite; Gate V3: AST-level static security scan\) with a risk-tiered) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 498.39 Td
+(decision policy that partitions candidate patches into AUTO_APPLY, ESCALATE \(requiring affirmative human review\), and) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 485.89 Td
+(REJECT.) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 469.39 Td
+(We evaluate AutoImmune across a benchmark of **12 fault scenarios** spanning 10 defect families \(null pointer dereferences,) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 456.89 Td
+(case-sensitivity regressions, resource descriptor leaks, configuration drift, API DTO contract mismatches, boundary value logic) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 444.39 Td
+(bugs, path traversal vulnerabilities, concurrency race conditions, and algorithmic CPU saturation\) encompassing **100) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 431.89 Td
+(candidate repair units** \(47 scripted mechanism units and 53 live LLM synthesis attempts\). Using paired McNemar) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 419.39 Td
+(discordance tests \($\\chi^2 = 9.0909, p = 0.002569$\), we empirically disprove the prevailing assumption that passing a) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 406.89 Td
+(complete regression test suite \(V2\) is sufficient for autonomous deployment: 23.4% of regression-passing patches introduce) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 394.39 Td
+(static security violations or breach sensitive infrastructure boundaries, which AutoImmune's risk policy successfully intercepts.) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 381.89 Td
+(Furthermore, we demonstrate that post-deployment canary health monitoring and automated container rollback provide an) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 369.39 Td
+(essential closed-loop defense against runtime performance degradation. Finally, we provide a transparent negative result:) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 356.89 Td
+(open-weights code LLMs in one-shot generation achieved **0.0% verified semantic correctness**, establishing why) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 344.39 Td
+(deterministic pre-deployment validation gates are indispensable for trustworthy autonomous remediation.) Tj
+ET
+BT
+/F2 8.50 Tf
+0.200 0.300 0.450 rg
+45.00 328.39 Td
+(Keywords: Automated Program Repair, Microservice Self-Healing, Risk Tiering, Large Language Models, Software Security, Canary) Tj
+ET
+BT
+/F2 8.50 Tf
+0.200 0.300 0.450 rg
+45.00 316.89 Td
+(Deployment, Patch Overfitting, Fault Injection.) Tj
+ET
+q
+1.00 w
+0.850 0.880 0.920 RG
+45.00 305.89 m 550.28 305.89 l S
+Q
+BT
+/F2 12.50 Tf
+0.120 0.250 0.450 rg
+45.00 279.89 Td
+(1. Introduction) Tj
+ET
+q
+1.20 w
+0.750 0.820 0.920 RG
+45.00 275.89 m 550.28 275.89 l S
+Q
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 256.89 Td
+(Modern enterprise software architectures increasingly rely on distributed microservices deployed as containerized workloads.) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 244.39 Td
+(While microservices decompose monolithic systems to isolate failure domains and enable rapid deployment, system incidents) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 231.89 Td
+(remain frequent and costly. Operational failures arise from complex software defects, configuration drift, boundary value logic) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 219.39 Td
+(errors, and concurrency anomalies [1]. High-severity production incidents can cost organizations thousands of dollars per) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 206.89 Td
+(minute of downtime, driving intense demand for automated self-healing mechanisms [2].) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 190.39 Td
+(Recent advances in Large Language Models \(LLMs\) specialized for code synthesis \(e.g. Codex, CodeLlama, Qwen-Coder\)) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 177.89 Td
+(have demonstrated impressive code generation capabilities, establishing LLM-assisted Automated Program Repair \(APR\) as) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 165.39 Td
+(an active frontier of software engineering research [3, 4]. However, industrial adoption of automated patch deployment in) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 152.89 Td
+(production services remains virtually nonexistent. This reluctance stems from a well-documented empirical phenomenon:) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 140.39 Td
+(**patch overfitting** [5, 6]. Machine-generated patches frequently satisfy the specific test exposing a bug while silently breaking) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 127.89 Td
+(unasserted requirements, corrupting peripheral API contracts, or injecting severe security vulnerabilities [7, 8].) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 111.39 Td
+(Industrial practice has traditionally managed this risk via two opposing paradigms:) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 95.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 95.09 Td
+(1. **The Review-All Baseline \(Policy B0\):** Every automated patch must be manually reviewed and approved by a human) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 83.09 Td
+(engineer prior to deployment. While conservative, this approach introduces severe human bottlenecks, increases MTTR by) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 71.09 Td
+(orders of magnitude, and causes reviewer fatigue [9].) Tj
+ET
+q 0.5 w 0.85 0.85 0.88 RG 45 35 m 550 35 l S Q
+BT
+/F1 8 Tf 0.45 0.45 0.50 rg 45 23 Td
+(AutoImmune Research Consortium | Evaluation Evidence & Integrity Audit) Tj
+ET
+BT
+/F2 8 Tf 0.40 0.40 0.45 rg 500 23 Td (Page 1 of 8) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 6 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> /F3 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >> /F4 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> /F5 << /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >> >> >> >>
+endobj
+6 0 obj
+<< /Length 6414 >>
+stream
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 763.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 763.09 Td
+(2. **The Test-Only Baseline \(Policies B1 and B2\):** Patches are automatically deployed if they pass the visible target test) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 751.09 Td
+(asserting the incident \(Policy B1\) or the existing regression test suite \(Policy B2\).) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 736.89 Td
+(To resolve this dilemma, this paper introduces **AutoImmune**, a hybrid, execution-gated self-healing framework designed to) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 724.39 Td
+(investigate three core Research Questions:) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 708.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 708.09 Td
+(**RQ1 \(Gate Effectiveness\):** What classes of defective, regressive, and insecure patches are intercepted by each) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 696.09 Td
+(successive validation gate \(V0-V3\), and what is their computational cost?) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 682.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 682.09 Td
+(**RQ2 \(Policy Safety & Risk Tiering\):** Does risk-tiered gating significantly reduce unsafe automated deployments compared) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 670.09 Td
+(to visible-test \(B1\) and full-regression \(B2\) baselines?) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 656.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 656.09 Td
+(**RQ3 \(Runtime Canary Defense\):** Can post-deployment canary observation reliably detect and roll back runtime) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 644.09 Td
+(performance regressions that pass all pre-deployment static and dynamic gates?) Tj
+ET
+q
+1.00 w
+0.850 0.880 0.920 RG
+45.00 634.89 m 550.28 634.89 l S
+Q
+BT
+/F2 12.50 Tf
+0.120 0.250 0.450 rg
+45.00 608.89 Td
+(2. Background and Related Work) Tj
+ET
+q
+1.20 w
+0.750 0.820 0.920 RG
+45.00 604.89 m 550.28 604.89 l S
+Q
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 580.89 Td
+(2.1 Automated Program Repair & The Overfitting Crisis) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 565.89 Td
+(The field of Automated Program Repair was pioneered by generate-and-validate systems such as *GenProg* [10], which used) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 553.39 Td
+(genetic programming to mutate abstract syntax trees until test suites passed. However, Smith et al. [5] and Qi et al. [6]) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 540.89 Td
+(revealed that test-suite-driven repair overwhelmingly produces plausible but incorrect patches-often by deleting functionality or) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 528.39 Td
+(bypassing boundary checks. Subsequent APR systems, such as *Prophet* [11] and *ACS* [12], attempted to constrain patch) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 515.89 Td
+(search spaces using learned probabilistic models or precise condition synthesis. AutoImmune builds on this foundation by) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 503.39 Td
+(recognizing that pre-deployment tests cannot establish semantic correctness in isolation; multi-stage validation, static security) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 490.89 Td
+(AST scanning, and post-deployment observation are required.) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 469.39 Td
+(2.2 LLMs for Code Repair & Untrusted Code Synthesis) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 454.39 Td
+(With the rise of transformer models, recent research has applied pre-trained language models to bug fixing [3, 4]. While) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 441.89 Td
+(conversational approaches like *ChatRepair* [13] and retrieval-augmented systems like *InferFix* [4] demonstrate high repair) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 429.39 Td
+(benchmark scores, security research by Pearce et al. [7] and Zhang et al. [8] highlights that approximately 40% of) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 416.89 Td
+(LLM-generated code contains security vulnerabilities, and developer studies by Tao et al. [14] demonstrate that unverified) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 404.39 Td
+(patches increase inspection overhead. AutoImmune explicitly treats the LLM as an **untrusted, adversarial synthesizer**,) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 391.89 Td
+(enforcing strict non-agentic isolation: the LLM is restricted to one-shot diagnosis and patch drafting, while all compilation,) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 379.39 Td
+(validation, and deployment logic is executed by deterministic software.) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 357.89 Td
+(2.3 Autonomic Computing & Self-Healing Microservices) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 342.89 Td
+(Autonomic computing, introduced by Kephart and Chess [2], envisioned self-managing systems governed by the MAPE-K) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 330.39 Td
+(\(Monitor-Analyze-Plan-Execute over shared Knowledge\) control loop. In microservices, industrial surveys by Zhou et al. [1] and) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 317.89 Td
+(diagnostic frameworks like *CauseInfer* [15] demonstrated the necessity of automated root-cause localization. AutoImmune) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 305.39 Td
+(operationalizes the complete MAPE-K loop for cloud microservices, coupling HTTP health probing, root-cause localization,) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 292.89 Td
+(isolated sandbox validation, and SLA-driven canary rollbacks.) Tj
+ET
+q
+1.00 w
+0.850 0.880 0.920 RG
+45.00 281.39 m 550.28 281.39 l S
+Q
+BT
+/F2 12.50 Tf
+0.120 0.250 0.450 rg
+45.00 255.39 Td
+(3. AutoImmune System Architecture) Tj
+ET
+q
+1.20 w
+0.750 0.820 0.920 RG
+45.00 251.39 m 550.28 251.39 l S
+Q
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 232.39 Td
+(AutoImmune operates as a closed-loop control system comprising four deterministic phases:) Tj
+ET
+BT
+/F3 8 Tf 0.45 0.45 0.50 rg 45 805 Td
+(AutoImmune Research Paper Readiness - Final Academic Review) Tj
+ET
+q 0.5 w 0.85 0.85 0.88 RG 45 798 m 550 798 l S Q
+q 0.5 w 0.85 0.85 0.88 RG 45 35 m 550 35 l S Q
+BT
+/F1 8 Tf 0.45 0.45 0.50 rg 45 23 Td
+(AutoImmune Research Consortium | Evaluation Evidence & Integrity Audit) Tj
+ET
+BT
+/F2 8 Tf 0.40 0.40 0.45 rg 500 23 Td (Page 2 of 8) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 8 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> /F3 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >> /F4 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> /F5 << /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >> >> >> >>
+endobj
+8 0 obj
+<< /Length 7238 >>
+stream
+q
+0.80 w
+0.850 0.880 0.920 RG
+0.960 0.970 0.980 rg
+45.00 467.89 505.28 304.00 re B
+Q
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 759.89 Td
+(flowchart TD) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 749.39 Td
+(    subgraph Phase1["Phase 1: Observation & Detection"]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 738.89 Td
+(        Probes[HTTP Health & Metrics Probes] --> Detector[Incident Detector]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 728.39 Td
+(        Detector --> Incident[Incident Context & Evidence]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 717.89 Td
+(    end) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 707.39 Td
+() Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 696.89 Td
+(    subgraph Phase2["Phase 2: Diagnosis & Patch Synthesis"]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 686.39 Td
+(        Incident --> Provider[Provider Interface<br/>Live / Replay / Scripted]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 675.89 Td
+(        Provider --> Diagnosis[Root Cause Localization]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 665.39 Td
+(        Diagnosis --> PatchGen[Draft Candidate Patches]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 654.89 Td
+(    end) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 644.39 Td
+() Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 633.89 Td
+(    subgraph Phase3["Phase 3: Deterministic Gate Pipeline"]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 623.39 Td
+(        PatchGen --> V0[Gate V0: git apply + mvn compile]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 612.89 Td
+(        V0 -->|Pass| V1[Gate V1: Visible Target Test]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 602.39 Td
+(        V1 -->|Pass| V2[Gate V2: Full Regression Suite]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 591.89 Td
+(        V2 -->|Pass| V3[Gate V3: Semgrep AST Security Scan]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 581.39 Td
+(        V3 --> DecisionEngine[Decision Engine<br/>config/decision.yaml]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 570.89 Td
+(    end) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 560.39 Td
+() Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 549.89 Td
+(    subgraph Phase4["Phase 4: Deployment & Canary Defense"]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 539.39 Td
+(        DecisionEngine -->|AUTO_APPLY| Deploy[Canary Deployment]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 528.89 Td
+(        DecisionEngine -->|ESCALATE| Review[Human Review Terminal]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 518.39 Td
+(        DecisionEngine -->|REJECT| Quarantine[Incident Quarantined]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 507.89 Td
+(        Deploy --> CanaryHealth{SLA Health Probe}) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 497.39 Td
+(        CanaryHealth -->|Breach| Rollback[Automated Rollback to Baseline]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 486.89 Td
+(        CanaryHealth -->|Passed| Promote[Promote to Production]) Tj
+ET
+BT
+/F4 7.50 Tf
+0.120 0.150 0.200 rg
+53.00 476.39 Td
+(    end) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 445.89 Td
+(3.1 Non-Agentic Trust Model) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 430.89 Td
+(To prevent runaway autonomous behavior, prompt injection, and hallucinated system mutations, AutoImmune enforces a) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 418.39 Td
+(**strict non-agentic guarantee**:) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 402.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 402.09 Td
+(1. The LLM has **zero tool-calling capabilities**, zero filesystem access, and zero shell execution privileges.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 388.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 388.09 Td
+(2. The LLM receives an immutable prompt containing the incident evidence and relevant source files, returning plain unified) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 376.09 Td
+(diff patches.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 362.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 362.09 Td
+(3. Patch candidates are validated inside ephemeral, network-isolated Docker containers configured with `--network none`,) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 350.09 Td
+(non-root user permissions, and dropped Linux capabilities \(`CAP_DROP=ALL`\).) Tj
+ET
+q
+1.00 w
+0.850 0.880 0.920 RG
+45.00 340.89 m 550.28 340.89 l S
+Q
+BT
+/F2 12.50 Tf
+0.120 0.250 0.450 rg
+45.00 314.89 Td
+(4. Methodology & Experimental Setup) Tj
+ET
+q
+1.20 w
+0.750 0.820 0.920 RG
+45.00 310.89 m 550.28 310.89 l S
+Q
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 286.89 Td
+(4.1 The 12-Fault Microservice Benchmark) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 271.89 Td
+(The evaluation is conducted on an enterprise Java Spring Boot microservice \(order-service\) implementing an e-commerce) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 259.39 Td
+(order management backend. The benchmark suite comprises 12 distinct fault packages spanning 10 defect families:) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 242.89 Td
+(| Fault ID | Defect Family | Complexity | Target Component | Symptom | Detection Rule |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 226.39 Td
+(| :--- | :--- | :---: | :--- | :--- | :--- |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 209.89 Td
+(| **F01** | Null Pointer Dereference | Low | OrderService.java | HTTP 500 NPE on missing customer param | probe_5xx |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 193.39 Td
+(| **F02** | Search Case Sensitivity | Medium | OrderService.java | Incomplete search results for uppercase queries |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 180.89 Td
+(probe_mismatch |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 164.39 Td
+(| **F03** | Resource Descriptor Leak | High | OrderController.java | File descriptor exhaustion on receipt export | Latency creep) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 151.89 Td
+(*\(Exploratory\)* |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 135.39 Td
+(| **F04** | Configuration Drift | Low | application.properties | Health indicator returns HTTP 503 DOWN | health_down |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 118.89 Td
+(| **F05** | API DTO Serialization | Medium | Item.java | Deserialization mismatch on order items | probe_mismatch |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 102.39 Td
+(| **F06** | Boundary Value Logic Bug | Low | OrderService.java | Off-by-one threshold discount miscalculation |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 89.89 Td
+(probe_mismatch |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 73.39 Td
+(| **F07** | Security Path Traversal | High | OrderController.java | Unsanitized directory traversal in report export |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 60.89 Td
+(report-path-traversal |) Tj
+ET
+BT
+/F3 8 Tf 0.45 0.45 0.50 rg 45 805 Td
+(AutoImmune Research Paper Readiness - Final Academic Review) Tj
+ET
+q 0.5 w 0.85 0.85 0.88 RG 45 798 m 550 798 l S Q
+q 0.5 w 0.85 0.85 0.88 RG 45 35 m 550 35 l S Q
+BT
+/F1 8 Tf 0.45 0.45 0.50 rg 45 23 Td
+(AutoImmune Research Consortium | Evaluation Evidence & Integrity Audit) Tj
+ET
+BT
+/F2 8 Tf 0.40 0.40 0.45 rg 500 23 Td (Page 3 of 8) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 10 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> /F3 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >> /F4 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> /F5 << /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >> >> >> >>
+endobj
+10 0 obj
+<< /Length 8649 >>
+stream
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 762.89 Td
+(| **F08** | Concurrency Race Condition | High | OrderRepository.java | Lost update during concurrent order counter increment |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 750.39 Td
+(Concurrent race *\(Excluded\)* |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 733.89 Td
+(| **F09** | Algorithmic CPU Starvation | Medium | OrderService.java | Cyclic loop spin on circular graph traversal | Latency SLA) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 721.39 Td
+(*\(Exploratory\)* |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 704.89 Td
+(| **F11** | Negative Accounting Defect | Low | OrderRepository.java | Unchecked negative order line total | Inconsistency) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 692.39 Td
+(*\(Exploratory\)* |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 675.89 Td
+(| **F12** | Permissive Endpoint Exposure | Medium | application.properties | Sensitive Actuator endpoints exposed to HTTP |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 663.39 Td
+(Config scan *\(Exploratory\)* |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 646.89 Td
+(| **F13** | Timezone Drift Inconsistency | Medium | OrderService.java | Receipt date serialized in non-UTC timezone | Format) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 634.39 Td
+(check *\(Exploratory\)* |) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 612.89 Td
+(4.2 Candidate Patch Generation Modes) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 598.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 598.09 Td
+(**Scripted Mechanism Checks \(61 Diffs\):** Hand-built patches designed to evaluate specific failure modes: `correct.diff`,) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 586.09 Td
+(`overfitting.diff`, `regressive.diff`, `insecure.diff`, `ineffective.diff`, and `slow.diff` \(planted for rollback verification\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 572.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 572.09 Td
+(**Live LLM Patch Synthesis \(53 Attempts\):** Generated using local open-weights models \(`qwen2.5-coder:1.5b` and) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 560.09 Td
+(`qwen2.5-coder:7b`\) and historical GPT-OSS endpoints under one-shot prompt templates.) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 540.89 Td
+(4.3 Validation Gates Specification \(V0-V3\)) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 526.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 526.09 Td
+(**Gate V0 \(Compilation\):** Verifies that `git apply --check` succeeds on the faulty source tree and `mvn -o compile` exits with) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 514.09 Td
+(code 0 inside the isolated container.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 500.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 500.09 Td
+(**Gate V1 \(Visible Incident Test\):** Executes the target test written specifically to assert the incident symptom \(`mvn -o test) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 488.09 Td
+(-Dtest=<TargetTest>`\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 474.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 474.09 Td
+(**Gate V2 \(Regression Suite\):** Executes the microservice's full pre-existing unit and integration test suite \(`mvn -o test`\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 460.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 460.09 Td
+(**Gate V3 \(Static Security AST Scan\):** Executes an offline Semgrep instance \(`semgrep/semgrep:1.100.0`\) using rules) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 448.09 Td
+(targeting injection vulnerabilities \(SQL concatenation, command execution, path traversal\). Findings are compared against the) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 436.09 Td
+(unpatched tree; only **new findings** cause gate failure.) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 416.89 Td
+(4.4 Risk Tiering Decision Engine) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 401.89 Td
+(If all gates V0-V3 pass, candidate patches are evaluated against risk scope rules:) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 385.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 385.59 Td
+(1. **Diff Size:** Patch must not exceed 15 modified lines.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 371.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 371.59 Td
+(2. **File Scope:** Patch must modify exactly one file.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 357.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 357.59 Td
+(3. **Locality:** The modified file must match the diagnosed root-cause file.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 343.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 343.59 Td
+(4. **Path Sensitivity:** The modified file must not reside in configuration \(`application.properties`\) or security-sensitive) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 331.59 Td
+(directories.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 317.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 317.59 Td
+(5. **Sample Agreement:** In multi-sample diagnosis, independent diagnosis samples must agree on the target file.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 303.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 303.59 Td
+(**`AUTO_APPLY`:** All gates pass, zero new security findings, and all risk scope rules satisfied.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 289.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 289.59 Td
+(**`ESCALATE`:** All gates pass, but patch modifies a configuration file, exceeds diff size, or exhibits diagnostic disagreement.) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 277.59 Td
+(Pauses for human signature.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 263.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 263.59 Td
+(**`REJECT`:** Any gate V0-V3 fails, or Gate V3 discovers a new high-severity security finding.) Tj
+ET
+q
+1.00 w
+0.850 0.880 0.920 RG
+45.00 254.39 m 550.28 254.39 l S
+Q
+BT
+/F2 12.50 Tf
+0.120 0.250 0.450 rg
+45.00 228.39 Td
+(5. Evaluation Metrics & Statistical Methods) Tj
+ET
+q
+1.20 w
+0.750 0.820 0.920 RG
+45.00 224.39 m 550.28 224.39 l S
+Q
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 200.39 Td
+(5.1 Evaluated Policy Configurations) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 185.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 185.59 Td
+(**Policy B0 \(Review-All Baseline\):** Every patch requires human review \(`AUTO_APPLY` rate = 0%\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 171.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 171.59 Td
+(**Policy B1 \(Visible Target Test Only\):** Auto-apply if Gate V0 and V1 pass; else reject.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 157.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 157.59 Td
+(**Policy B2 \(Full Regression Test Suite\):** Auto-apply if Gates V0, V1, and V2 pass; else reject.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 143.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 143.59 Td
+(**Policy B3 \(AutoImmune Tiered Framework\):** Auto-apply only if Gates V0-V3 pass and all risk scope rules are satisfied.) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 124.39 Td
+(5.2 Primary Evaluation Metrics) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 109.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 109.59 Td
+(**Auto-Apply Rate:** Proportions of candidates automatically deployed \($\\frac{\\text{Auto-Applied}}{N}$\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 95.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 95.59 Td
+(**Unsafe Decision Rate \(UDR\):** Proportion of auto-applied candidates that are semantically incorrect or unsafe) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 83.59 Td
+(\($\\frac{\\text{Unsafe Auto-Applied}}{\\text{Labelled Auto-Applied}}$\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 69.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 69.59 Td
+(**Unsafe Escape Rate:** Proportion of all unsafe candidates that escape into production \($\\frac{\\text{Unsafe) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 57.59 Td
+(Auto-Applied}}{\\text{Total Unsafe Candidates}}$\).) Tj
+ET
+BT
+/F3 8 Tf 0.45 0.45 0.50 rg 45 805 Td
+(AutoImmune Research Paper Readiness - Final Academic Review) Tj
+ET
+q 0.5 w 0.85 0.85 0.88 RG 45 798 m 550 798 l S Q
+q 0.5 w 0.85 0.85 0.88 RG 45 35 m 550 35 l S Q
+BT
+/F1 8 Tf 0.45 0.45 0.50 rg 45 23 Td
+(AutoImmune Research Consortium | Evaluation Evidence & Integrity Audit) Tj
+ET
+BT
+/F2 8 Tf 0.40 0.40 0.45 rg 500 23 Td (Page 4 of 8) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 12 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> /F3 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >> /F4 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> /F5 << /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >> >> >> >>
+endobj
+12 0 obj
+<< /Length 7850 >>
+stream
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 763.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 763.09 Td
+(**False Rejection Rate \(FRR\):** Proportion of viable, correct candidates rejected by gates \($\\frac{\\text{Safe Applicable) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 751.09 Td
+(Rejected}}{\\text{Safe Applicable Candidates}}$\).) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 731.89 Td
+(5.3 Statistical Hypothesis Testing) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 716.89 Td
+(Because competing policies are evaluated on the exact same candidate repair units, two-sample independent tests are) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 704.39 Td
+(methodologically invalid. We evaluate discordance using **McNemar's paired test with Edwards' continuity correction**:) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 687.89 Td
+($$\\chi^2 = \\frac{\(|n_{10} - n_{01}| - 1\)^2}{n_{10} + n_{01}}, \\quad \\text{d.f.} = 1$$) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 671.39 Td
+(Confidence intervals for all proportions are reported using asymmetric **Wilson score 95% intervals**.) Tj
+ET
+q
+1.00 w
+0.850 0.880 0.920 RG
+45.00 659.89 m 550.28 659.89 l S
+Q
+BT
+/F2 12.50 Tf
+0.120 0.250 0.450 rg
+45.00 633.89 Td
+(6. Experimental Results) Tj
+ET
+q
+1.20 w
+0.750 0.820 0.920 RG
+45.00 629.89 m 550.28 629.89 l S
+Q
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 610.89 Td
+(The experimental analysis evaluates **100 candidate units** \(47 scripted mechanism units and 53 live LLM repair attempts\)) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 598.39 Td
+(derived from 190 eligible execution rows across 6 evaluated fault clusters \(F01, F02, F04, F05, F06, F07\).) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 576.89 Td
+(6.1 Policy Safety Comparison \(Scripted Cohort, $N = 47$\)) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 561.89 Td
+(| Policy Configuration | Auto-Apply Rate [95% CI] | Escalate Rate [95% CI] | Reject Rate [95% CI] | Unsafe Decision Rate) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 549.39 Td
+(\(UDR\) | Unsafe Escape Rate | False Rejection Rate \(FRR\) |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 532.89 Td
+(| :--- | :---: | :---: | :---: | :---: | :---: | :---: |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 516.39 Td
+(| **B0 \(Review-All\)** | 0.0% \(0/47\)<br/>[0.0%, 7.6%] | **100.0%** \(47/47\)<br/>[92.4%, 100.0%] | 0.0% \(0/47\)<br/>[0.0%, 7.6%]) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 503.89 Td
+(| *0/0 \(Undefined\)* | **0.0%** \(0/38\)<br/>[0.0%, 9.2%] | **0.0%** \(0/9\)<br/>[0.0%, 29.9%] |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 487.39 Td
+(| **B1 \(Target Test\)** | **80.9%** \(38/47\)<br/>[67.5%, 89.6%] | 0.0% \(0/47\)<br/>[0.0%, 7.6%] | 19.1% \(9/47\)<br/>[10.4%,) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 474.89 Td
+(32.5%] | **76.3%** \(29/38\)<br/>[60.8%, 87.0%] | **76.3%** \(29/38\)<br/>[60.8%, 87.0%] | **0.0%** \(0/9\)<br/>[0.0%, 29.9%] |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 458.39 Td
+(| **B2 \(Full Regression\)** | **61.7%** \(29/47\)<br/>[47.4%, 74.2%] | 0.0% \(0/47\)<br/>[0.0%, 7.6%] | 38.3% \(18/47\)<br/>[25.8%,) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 445.89 Td
+(52.6%] | **69.0%** \(20/29\)<br/>[50.8%, 82.7%] | **52.6%** \(20/38\)<br/>[37.3%, 67.5%] | **0.0%** \(0/9\)<br/>[0.0%, 29.9%] |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 429.39 Td
+(| **B3 \(AutoImmune\)** | **38.3%** \(18/47\)<br/>[25.8%, 52.6%] | **6.4%** \(3/47\)<br/>[2.2%, 17.2%] | **55.3%**) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 416.89 Td
+(\(26/47\)<br/>[41.2%, 68.6%] | **61.1%** \(11/18\)<br/>[38.6%, 79.7%] | **28.9%** \(11/38\)<br/>[17.0%, 44.8%] | **0.0%**) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 404.39 Td
+(\(0/9\)<br/>[0.0%, 29.9%] |) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 382.89 Td
+(6.2 Paired Hypothesis Testing & Statistical Significance) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 367.89 Td
+(Applying McNemar's paired test to the matched candidate evaluations demonstrates highly statistically significant) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 355.39 Td
+(improvements:) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 339.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 339.09 Td
+(**Policy B1 vs. Policy B3:** 20 discordant pairs \($n_{10} = 20, n_{01} = 0$\). AutoImmune reduces unsafe automated) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 327.09 Td
+(application by **42.6 percentage points** \($\\chi^2 = 18.0500, p < \\mathbf{0.0001}$\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 313.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 313.09 Td
+(**Policy B2 vs. Policy B3:** 11 discordant pairs \($n_{10} = 11, n_{01} = 0$\). AutoImmune reduces automated deployment of) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 301.09 Td
+(hazardous candidates by **23.4 percentage points** \($\\chi^2 = \\mathbf{9.0909}, p = \\mathbf{0.002569}$\).) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 281.89 Td
+(6.3 Anatomy of the 11 Discordant Candidates) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 266.89 Td
+(The 11 candidates where Policy B2 auto-applies and Policy B3 intercepts fall into two critical failure categories:) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 250.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 250.59 Td
+(1. **Static Security AST Interceptions \(8 candidate units\):** Intercepted by Gate V3 \(Semgrep\). Across `F01`, `F02`, `F04`,) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 238.59 Td
+(`F06`, and `F07`, candidate patches fixed the functional defect and passed the full regression test suite, but injected raw SQL) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 226.59 Td
+(string concatenation \(`"SELECT ... " + param`\). Policy B2 classified them as `AUTO_APPLY` \(authorizing automated) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 214.59 Td
+(deployment\); Gate V3 in AutoImmune flagged the `sql-string-concatenation` rule \(severity `ERROR`\) and rejected them.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 200.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 200.59 Td
+(2. **Architectural Isolation & Configuration Interceptions \(3 candidate units\):** In `F04`, 3 candidates triggered architectural) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 188.59 Td
+(isolation and configuration safety rules: two modified the protected `application.properties` configuration path, and one) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 176.59 Td
+(modified `CatalogHealthIndicator.java` outside the diagnosed root-cause file. While passing compilation and tests,) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 164.59 Td
+(AutoImmune's scope allowlist escalated these candidates to human operator review rather than permitting autonomous) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 152.59 Td
+(application.) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 133.39 Td
+(6.4 Analysis of Remaining Unsafe Escapes Under Policy B3) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 118.39 Td
+(While AutoImmune reduces the Unsafe Escape Rate from 76.3% \(B1\) and 52.6% \(B2\) down to 28.9% \(11/38\), 11 unsafe) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 105.89 Td
+(candidates still received an AUTO_APPLY decision under B3. A forensic breakdown of these 11 escapes reveals why) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 93.39 Td
+(pre-deployment testing alone is inherently insufficient:) Tj
+ET
+BT
+/F3 8 Tf 0.45 0.45 0.50 rg 45 805 Td
+(AutoImmune Research Paper Readiness - Final Academic Review) Tj
+ET
+q 0.5 w 0.85 0.85 0.88 RG 45 798 m 550 798 l S Q
+q 0.5 w 0.85 0.85 0.88 RG 45 35 m 550 35 l S Q
+BT
+/F1 8 Tf 0.45 0.45 0.50 rg 45 23 Td
+(AutoImmune Research Consortium | Evaluation Evidence & Integrity Audit) Tj
+ET
+BT
+/F2 8 Tf 0.40 0.40 0.45 rg 500 23 Td (Page 5 of 8) Tj
+ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 14 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> /F3 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >> /F4 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> /F5 << /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >> >> >> >>
+endobj
+14 0 obj
+<< /Length 7516 >>
+stream
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 763.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 763.09 Td
+(**Overfitting Patches \(7 units\):** In `F01`, `F04`, `F05`, `F06`, and `F07`, these patches satisfy the specific visible unit test and) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 751.09 Td
+(pre-existing regression tests, but fail unasserted behavioral properties \(detected only by the independent hidden test suite) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 739.09 Td
+(`<F>HiddenTest.java`\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 725.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 725.09 Td
+(**Runtime Performance Degradations \(2 units\):** In `F06`, candidate `slow.diff` introduces an intentional 3000ms delay.) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 713.09 Td
+(Because unit tests do not assert latency thresholds, this defect passes all pre-deployment gates and is intercepted exclusively) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 701.09 Td
+(by the post-deployment canary SLA window.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 687.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 687.09 Td
+(**Unasserted Domain Insecurities \(2 units\):** In `F05` and `F07`, patches with domain-specific flaws did not match the existing) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 675.09 Td
+(Semgrep pattern rules.) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 660.89 Td
+(This empirical reality demonstrates why closed-loop post-deployment observation and canary rollbacks are essential) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 648.39 Td
+(complements to pre-deployment gating.) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 626.89 Td
+(6.5 Live LLM Synthesis Results \($N = 53$\)) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 611.89 Td
+(| Evaluated LLM Synthesizer | Evaluated Attempts | Passed Compilation \(V0\) | Fixed Incident \(V1\) | Passed Regression \(V2\) |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 599.39 Td
+(Clean Security \(V3\) | AUTO_APPLY Decisions | Verified Correct \(Oracle\) |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 582.89 Td
+(| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 566.39 Td
+(| qwen2.5-coder:1.5b | 8 | 0 \(0.0%\) | 0 \(0.0%\) | 0 \(0.0%\) | 0 \(0.0%\) | 0 \(0.0%\) | **0 \(0.0%\)** |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 549.89 Td
+(| qwen2.5-coder:7b | 33 | 11 \(33.3%\) | 0 \(0.0%\) | 0 \(0.0%\) | 0 \(0.0%\) | 0 \(0.0%\) | **0 \(0.0%\)** |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 533.39 Td
+(| openai/gpt-oss-120b | 12 | 11 \(91.7%\) | 7 \(58.3%\) | 7 \(58.3%\) | 7 \(58.3%\) | 5 \(41.7%\) | **0 \(0.0%\)** |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 516.89 Td
+(| **All Live LLM Attempts** | **53** | **22 \(41.5%\)** | **7 \(13.2%\)** | **7 \(13.2%\)** | **7 \(13.2%\)** | **5 \(9.4%\)** | **0 / 53) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 504.39 Td
+(\(0.0%\)** |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 487.89 Td
+(Across all 53 live attempts evaluated against independent hidden oracle tests, **zero candidates achieved semantic) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 475.39 Td
+(correctness \(0.0%\)**. In local models, 58.5% of patches failed to compile, synthesizing hallucinated methods or invalid syntax.) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 462.89 Td
+(AutoImmune's pre-deployment gates intercepted **86.8% \(46/53\)** of defective LLM patches, proving the framework's) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 450.39 Td
+(protective efficacy against imperfect model outputs.) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 428.89 Td
+(6.6 Gate Latency & Computational Overhead) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 413.89 Td
+(| Gate Identifier | Validation Target | Intercepted Candidates | Mean Latency \(s\) | Median Latency \(s\) |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 397.39 Td
+(| :--- | :--- | :---: | :---: | :---: |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 380.89 Td
+(| **Gate V0** | Syntax, git apply, Maven compile | **31 candidates** | 1.1s | 1.0s |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 364.39 Td
+(| **Gate V1** | Incident Target Test | **24 candidates** | 2.4s | 2.1s |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 347.89 Td
+(| **Gate V2** | Full Regression Suite | **9 candidates** | 3.8s | 3.5s |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 331.39 Td
+(| **Gate V3** | Semgrep Static Security AST | **8 candidates** | 1.2s | 1.1s |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 314.89 Td
+(| **Risk Scope** | Diff lines, sensitive paths | **5 escalated** | <0.01s | <0.01s |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 298.39 Td
+(| **Canary Window** | Post-deployment HTTP SLA probe | **1 rolled back** | 3.0s | 3.0s |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 281.89 Td
+(| **Full Pipeline Cascade** | Complete V0-V3 + Scope evaluation | **23 auto-applied**\\* | **8.5s** | **8.2s** |) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 265.39 Td
+(\\* *Note on Decisions vs. Deployments:* Across all 100 candidate units, 23 patches received an AUTO_APPLY policy decision) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 252.89 Td
+(\(18 Scripted, 5 LLM\). Live end-to-end container socket deployment was executed for 13 candidate runs, with 2 rollbacks) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 240.39 Td
+(recorded in telemetry \(one induced by SLA latency breach and one recovery verification\).) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 218.89 Td
+(6.7 Runtime Canary Defense & Automated Rollback) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 203.89 Td
+(In fault F06, candidate F06-scripted-7509cb64 \(slow.diff\) injected an intentional 3000ms delay while maintaining functional) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 191.39 Td
+(correctness. The patch passed Gates V0-V3 and satisfied diff size limits, receiving an AUTO_APPLY decision. During the) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 178.89 Td
+(post-deployment canary window, the SLA probe measured an endpoint latency of **3,015 ms** \(breaching the 2,000 ms SLA) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 166.39 Td
+(threshold\). The deployment engine immediately halted traffic shifting, executed a container swap back to) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 153.89 Td
+(order-service:baseline, and restored service health within **5.0 seconds**, proving the necessity of runtime closed-loop) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 141.39 Td
+(monitoring.) Tj
+ET
+q
+1.00 w
+0.850 0.880 0.920 RG
+45.00 129.89 m 550.28 129.89 l S
+Q
+BT
+/F2 12.50 Tf
+0.120 0.250 0.450 rg
+45.00 103.89 Td
+(7. Discussion) Tj
+ET
+q
+1.20 w
+0.750 0.820 0.920 RG
+45.00 99.89 m 550.28 99.89 l S
+Q
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 75.89 Td
+(7.1 The Limits of Pre-Deployment Testing) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 60.89 Td
+(A central insight of this research is that automated program repair cannot rely solely on pre-deployment validation, regardless) Tj
+ET
+BT
+/F3 8 Tf 0.45 0.45 0.50 rg 45 805 Td
+(AutoImmune Research Paper Readiness - Final Academic Review) Tj
+ET
+q 0.5 w 0.85 0.85 0.88 RG 45 798 m 550 798 l S Q
+q 0.5 w 0.85 0.85 0.88 RG 45 35 m 550 35 l S Q
+BT
+/F1 8 Tf 0.45 0.45 0.50 rg 45 23 Td
+(AutoImmune Research Consortium | Evaluation Evidence & Integrity Audit) Tj
+ET
+BT
+/F2 8 Tf 0.40 0.40 0.45 rg 500 23 Td (Page 6 of 8) Tj
+ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 16 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> /F3 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >> /F4 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> /F5 << /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >> >> >> >>
+endobj
+16 0 obj
+<< /Length 8374 >>
+stream
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 762.89 Td
+(of test suite thoroughness. Regression suites assert previously known behaviors; they cannot anticipate unasserted) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 750.39 Td
+(side-effects. Furthermore, static tests cannot detect runtime performance degradation under realistic traffic. Closed-loop) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 737.89 Td
+(autonomic self-healing requires a defense-in-depth model:) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 721.39 Td
+($$\\text{Safety} = \\text{Deterministic Gates} + \\text{Risk-Based Escalation} + \\text{Canary Rollbacks}$$) Tj
+ET
+BT
+/F2 10.50 Tf
+0.180 0.220 0.280 rg
+45.00 699.89 Td
+(7.2 Why Local Code Models Fail in One-Shot Enterprise Repair) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 684.89 Td
+(The 0.0% verified repair rate among local open-weights code models highlights a critical gap between academic benchmarks) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 672.39 Td
+(and enterprise software engineering. While small models perform well on standalone functions \(e.g. HumanEval, QuixBugs\),) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 659.89 Td
+(enterprise microservices involve multi-file class hierarchies, framework annotations \(Spring @RestController, @Autowired\),) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 647.39 Td
+(and database transaction semantics. Without conversational test feedback or iterative refinement, one-shot synthesis produces) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 634.89 Td
+(syntactically plausible but semantically shallow patches.) Tj
+ET
+q
+1.00 w
+0.850 0.880 0.920 RG
+45.00 623.39 m 550.28 623.39 l S
+Q
+BT
+/F2 12.50 Tf
+0.120 0.250 0.450 rg
+45.00 597.39 Td
+(8. Threats to Validity & Limitations) Tj
+ET
+q
+1.20 w
+0.750 0.820 0.920 RG
+45.00 593.39 m 550.28 593.39 l S
+Q
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 574.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 574.59 Td
+(1. **Internal Validity:** Faults were seeded using a defect catalog across 10 families. While representative of industrial) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 562.59 Td
+(microservice defects [1], human bias in patch construction was mitigated by incorporating live LLM generation and blind offline) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 550.59 Td
+(oracle evaluation.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 536.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 536.59 Td
+(2. **Construct Validity:** Ground truth labels were generated offline using hidden behavioral tests \(`<F>HiddenTest.java`\),) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 524.59 Td
+(existing regression suites, and security regex scans. An unhandled defect not asserted by hidden tests could theoretically be) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 512.59 Td
+(misclassified.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 498.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 498.59 Td
+(3. **External Validity:** The benchmark is evaluated on an enterprise Java Spring Boot service. While Spring Boot represents) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 486.59 Td
+(the dominant enterprise microservice framework, generalizability to Go, Node.js, or Python microservices remains to be) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 474.59 Td
+(verified.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 460.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 460.59 Td
+(4. **Human Subject Trial:** The interactive CLI review protocol was validated using automated fixtures and operator terminal) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 448.59 Td
+(simulation; human operator cognitive fatigue and review accuracy were not evaluated in a clinical user study.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 434.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 434.59 Td
+(5. **Deployment Infrastructure:** Deployments were executed via container socket swapping in Docker; distributed) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 422.59 Td
+(Kubernetes multi-pod ingress routing was not demonstrated live.) Tj
+ET
+q
+1.00 w
+0.850 0.880 0.920 RG
+45.00 413.39 m 550.28 413.39 l S
+Q
+BT
+/F2 12.50 Tf
+0.120 0.250 0.450 rg
+45.00 387.39 Td
+(9. Conclusion) Tj
+ET
+q
+1.20 w
+0.750 0.820 0.920 RG
+45.00 383.39 m 550.28 383.39 l S
+Q
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 364.39 Td
+(This paper presented **AutoImmune**, an execution-gated, risk-tiered framework for AI-assisted self-healing of microservices.) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 351.89 Td
+(Through rigorous empirical evaluation across 100 candidate units in 12 fault scenarios, we demonstrated that:) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 335.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 335.59 Td
+(1. Passing a full regression test suite \(V2\) is statistically insufficient for autonomous deployment: 23.4% of regression-passing) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 323.59 Td
+(patches inject security vulnerabilities or configuration breaches, which AutoImmune's Gate V3 and risk tiering successfully) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 311.59 Td
+(intercept \($\\chi^2 = 9.0909, p = 0.002569$\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 297.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 297.59 Td
+(2. Local code LLMs achieve 0.0% verified repair accuracy on enterprise microservice bugs in one-shot generation,) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 285.59 Td
+(emphasizing that deterministic validation gates are essential to prevent catastrophic automated deployments.) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 271.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 271.59 Td
+(3. Closed-loop canary monitoring and automated container rollback provide an indispensable final defense against runtime) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 259.59 Td
+(performance degradation.) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 245.39 Td
+(By replacing blind autonomous deployment with evidence-backed risk tiering and human escalation, AutoImmune provides a) Tj
+ET
+BT
+/F1 9.00 Tf
+0.150 0.180 0.220 rg
+45.00 232.89 Td
+(scientifically grounded blueprint for trustworthy self-healing microservice infrastructure.) Tj
+ET
+q
+1.00 w
+0.850 0.880 0.920 RG
+45.00 221.39 m 550.28 221.39 l S
+Q
+BT
+/F2 12.50 Tf
+0.120 0.250 0.450 rg
+45.00 195.39 Td
+(References) Tj
+ET
+q
+1.20 w
+0.750 0.820 0.920 RG
+45.00 191.39 m 550.28 191.39 l S
+Q
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 172.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 172.59 Td
+(1. X. Zhou, X. Peng, T. Xie, J. Sun, C. Ji, W. Li, and Y. Yu, "Fault Analysis and Debugging of Microservice Systems: Industrial) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 160.59 Td
+(Survey, Benchmark System, and Empirical Study," *IEEE Transactions on Software Engineering*, vol. 47, no. 2, pp. 243-260,) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 148.59 Td
+(2021. DOI: [10.1109/TSE.2018.2887384]\(https://doi.org/10.1109/TSE.2018.2887384\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 134.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 134.59 Td
+(2. J. O. Kephart and D. M. Chess, "The Vision of Autonomic Computing," *Computer*, vol. 36, no. 1, pp. 41-50, 2003. DOI:) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 122.59 Td
+([10.1109/MC.2003.1160055]\(https://doi.org/10.1109/MC.2003.1160055\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 108.59 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 108.59 Td
+(3. C. S. Xia, Y. Wei, and L. Zhang, "Automated Program Repair in the Era of Large Pre-trained Language Models," in *Proc.) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 96.59 Td
+(45th International Conference on Software Engineering \(ICSE\)*, pp. 1482-1494, 2023. DOI:) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 84.59 Td
+([10.1109/ICSE48619.2023.00129]\(https://doi.org/10.1109/ICSE48619.2023.00129\).) Tj
+ET
+BT
+/F3 8 Tf 0.45 0.45 0.50 rg 45 805 Td
+(AutoImmune Research Paper Readiness - Final Academic Review) Tj
+ET
+q 0.5 w 0.85 0.85 0.88 RG 45 798 m 550 798 l S Q
+q 0.5 w 0.85 0.85 0.88 RG 45 35 m 550 35 l S Q
+BT
+/F1 8 Tf 0.45 0.45 0.50 rg 45 23 Td
+(AutoImmune Research Consortium | Evaluation Evidence & Integrity Audit) Tj
+ET
+BT
+/F2 8 Tf 0.40 0.40 0.45 rg 500 23 Td (Page 7 of 8) Tj
+ET
+endstream
+endobj
+17 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 18 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> /F3 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >> /F4 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> /F5 << /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >> >> >> >>
+endobj
+18 0 obj
+<< /Length 7036 >>
+stream
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 763.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 763.09 Td
+(4. M. Jin, S. Shahriar, M. Tufano, X. Shi, S. Lu, N. Sundaresan, and A. Svyatkovskiy, "InferFix: End-to-End Program Repair) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 751.09 Td
+(with LLMs," in *Proc. 31st ACM Joint European Software Engineering Conference and Symposium on the Foundations of) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 739.09 Td
+(Software Engineering \(ESEC/FSE\)*, pp. 1646-1656, 2023. DOI:) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 727.09 Td
+([10.1145/3611643.3613892]\(https://doi.org/10.1145/3611643.3613892\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 713.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 713.09 Td
+(5. E. K. Smith, E. T. Barr, C. Le Goues, and Y. Brun, "Is the Cure Worse than the Disease? Overfitting in Automated Program) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 701.09 Td
+(Repair," in *Proc. 10th Joint Meeting on Foundations of Software Engineering \(ESEC/FSE\)*, pp. 332-343, 2015. DOI:) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 689.09 Td
+([10.1145/2786805.2786825]\(https://doi.org/10.1145/2786805.2786825\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 675.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 675.09 Td
+(6. Z. Qi, F. Long, S. Achour, and M. Rinard, "An Analysis of Patch Plausibility and Correctness for Generate-and-Validate) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 663.09 Td
+(Patch Generation Systems," in *Proc. 2015 International Symposium on Software Testing and Analysis \(ISSTA\)*, pp. 24-36,) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 651.09 Td
+(2015. DOI: [10.1145/2771783.2771791]\(https://doi.org/10.1145/2771783.2771791\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 637.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 637.09 Td
+(7. H. Pearce, B. Ahmad, B. Tan, R. Karri, and B. Dolan-Gavitt, "Asleep at the Keyboard? Assessing the Security of GitHub) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 625.09 Td
+(Copilot's Code Contributions," in *Proc. 2022 IEEE Symposium on Security and Privacy \(SP\)*, pp. 754-768, 2022. DOI:) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 613.09 Td
+([10.1109/SP46214.2022.9833571]\(https://doi.org/10.1109/SP46214.2022.9833571\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 599.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 599.09 Td
+(8. Q. Zhang, C. Fang, B.-C. Yu, W. Sun, T. Zhang, and Z. Chen, "Pre-trained Model-based Automated Software Vulnerability) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 587.09 Td
+(Repair: How Far are We?," *IEEE Transactions on Dependable and Secure Computing*, vol. 21, no. 4, pp. 3214-3231, 2023.) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 575.09 Td
+(DOI: [10.1109/TDSC.2023.3308897]\(https://doi.org/10.1109/TDSC.2023.3308897\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 561.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 561.09 Td
+(9. Z. P. Fry, B. Landau, and W. Weimer, "A Human Study of Patch Maintainability," in *Proc. 2012 International Symposium) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 549.09 Td
+(on Software Testing and Analysis \(ISSTA\)*, pp. 177-187, 2012. DOI:) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 537.09 Td
+([10.1145/2338965.2336775]\(https://doi.org/10.1145/2338965.2336775\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 523.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 523.09 Td
+(10. C. Le Goues, T. Nguyen, S. Forrest, and W. Weimer, "GenProg: A Generic Method for Automatic Software Repair," *IEEE) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 511.09 Td
+(Transactions on Software Engineering*, vol. 38, no. 1, pp. 54-72, 2012. DOI:) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 499.09 Td
+([10.1109/TSE.2011.104]\(https://doi.org/10.1109/TSE.2011.104\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 485.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 485.09 Td
+(11. F. Long and M. Rinard, "Automatic Patch Generation by Learning Correct Code," in *Proc. 43rd Annual ACM) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 473.09 Td
+(SIGPLAN-SIGACT Symposium on Principles of Programming Languages \(POPL\)*, pp. 298-312, 2016. DOI:) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 461.09 Td
+([10.1145/2837614.2837617]\(https://doi.org/10.1145/2837614.2837617\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 447.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 447.09 Td
+(12. Y. Xiong, J. Wang, R. Yan, J. Zhang, S. Han, G. Huang, and L. Zhang, "Precise Condition Synthesis for Program Repair,") Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 435.09 Td
+(in *Proc. 39th International Conference on Software Engineering \(ICSE\)*, pp. 416-426, 2017. DOI:) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 423.09 Td
+([10.1109/ICSE.2017.45]\(https://doi.org/10.1109/ICSE.2017.45\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 409.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 409.09 Td
+(13. C. S. Xia and L. Zhang, "Automated Program Repair via Conversation: Fixing 162 out of 337 Bugs for $0.42 Each Using) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 397.09 Td
+(ChatGPT," in *Proc. 33rd ACM SIGSOFT International Symposium on Software Testing and Analysis \(ISSTA\)*, pp. 834-846,) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 385.09 Td
+(2024. DOI: [10.1145/3650212.3680323]\(https://doi.org/10.1145/3650212.3680323\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 371.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 371.09 Td
+(14. Y. Tao, J. Kim, S. Kim, and C. Xu, "Automatically Generated Patches as Debugging Aids: A Human Study," in *Proc. 22nd) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 359.09 Td
+(ACM SIGSOFT International Symposium on Foundations of Software Engineering \(FSE\)*, pp. 67-77, 2014. DOI:) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 347.09 Td
+([10.1145/2635868.2635873]\(https://doi.org/10.1145/2635868.2635873\).) Tj
+ET
+BT
+/F2 8.80 Tf
+0.200 0.400 0.700 rg
+49.00 333.09 Td
+(*) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 333.09 Td
+(15. P. Chen, Y. Qi, P. Zheng, and D. Hou, "CauseInfer: Automatic and Distributed Performance Diagnosis with Hierarchical) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 321.09 Td
+(Causality Graph in Large Distributed Systems," in *Proc. 2014 IEEE Conference on Computer Communications \(INFOCOM\)*,) Tj
+ET
+BT
+/F1 8.80 Tf
+0.150 0.180 0.220 rg
+59.00 309.09 Td
+(pp. 1887-1895, 2014. DOI: [10.1109/INFOCOM.2014.6848128]\(https://doi.org/10.1109/INFOCOM.2014.6848128\).) Tj
+ET
+BT
+/F3 8 Tf 0.45 0.45 0.50 rg 45 805 Td
+(AutoImmune Research Paper Readiness - Final Academic Review) Tj
+ET
+q 0.5 w 0.85 0.85 0.88 RG 45 798 m 550 798 l S Q
+q 0.5 w 0.85 0.85 0.88 RG 45 35 m 550 35 l S Q
+BT
+/F1 8 Tf 0.45 0.45 0.50 rg 45 23 Td
+(AutoImmune Research Consortium | Evaluation Evidence & Integrity Audit) Tj
+ET
+BT
+/F2 8 Tf 0.40 0.40 0.45 rg 500 23 Td (Page 8 of 8) Tj
+ET
+endstream
+endobj
+xref
+0 19
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000167 00000 n 
+0000000598 00000 n 
+0000009166 00000 n 
+0000009597 00000 n 
+0000016063 00000 n 
+0000016494 00000 n 
+0000023784 00000 n 
+0000024216 00000 n 
+0000032918 00000 n 
+0000033351 00000 n 
+0000041254 00000 n 
+0000041687 00000 n 
+0000049256 00000 n 
+0000049689 00000 n 
+0000058116 00000 n 
+0000058549 00000 n 
+trailer
+<< /Size 19 /Root 1 0 R >>
+startxref
+65638
+%%EOF

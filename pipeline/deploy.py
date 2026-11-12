@@ -125,16 +125,31 @@ def build_image(source_dir: Path, tag: str) -> float:
     return time.monotonic() - start
 
 
-def _stop_app() -> None:
-    _docker(["rm", "-f", APP_CONTAINER])
+def _stop_app(retries: int = 3, retry_delay: float = 0.5) -> None:
+    """Safely and idempotently remove APP_CONTAINER, ensuring the name is freed."""
+    for attempt in range(retries):
+        _docker(["rm", "-f", APP_CONTAINER])
+        check = _docker(["inspect", APP_CONTAINER])
+        if check.returncode != 0:
+            return  # Confirmed: container no longer exists
+        time.sleep(retry_delay * (attempt + 1))
 
 
-def _run_app(tag: str, cfg: dict) -> None:
+def _run_app(tag: str, cfg: dict, retries: int = 3) -> None:
+    """Run an image as APP_CONTAINER, handling name conflicts idempotently with retry."""
     _stop_app()
-    r = _docker(["run", "-d", "--name", APP_CONTAINER, "-p", f"{cfg['host_port']}:{cfg['app_port']}",
-                 "--memory", "1g", "--cpus", "2", tag])
-    if r.returncode != 0:
-        raise DeployError(f"docker run {tag} failed: {r.stderr.strip()}")
+    last_err = ""
+    for attempt in range(retries):
+        r = _docker(["run", "-d", "--name", APP_CONTAINER, "-p", f"{cfg['host_port']}:{cfg['app_port']}",
+                     "--memory", "1g", "--cpus", "2", tag])
+        if r.returncode == 0:
+            return
+        last_err = r.stderr.strip()
+        if "Conflict" in last_err or "already in use" in last_err:
+            _stop_app(retries=2, retry_delay=0.5)
+            continue
+        raise DeployError(f"docker run {tag} failed: {last_err}")
+    raise DeployError(f"docker run {tag} failed after {retries} attempts: {last_err}")
 
 
 # --------------------------------------------------------------------------- HTTP checks
@@ -247,13 +262,54 @@ def _window_p95(cfg: dict, base_snap: dict, seconds: float, http_get, clock) -> 
 
 # --------------------------------------------------------------------------- baseline and probes
 
-def start_baseline(repo: Path = REPO, cfg: dict | None = None) -> dict:
+def start_baseline(repo: Path | None = None, cfg: dict | None = None) -> dict:
+    if isinstance(repo, dict) and cfg is None:
+        cfg, repo = repo, REPO
+    repo = repo or REPO
     cfg = cfg or load_config(repo)
+    if current_image() == BASELINE_TAG and _health(cfg)["ok"]:
+        return {"image": BASELINE_TAG, "container": APP_CONTAINER, "url": base_url(cfg),
+                "build_s": 0.0, "startup_s": 0.0, "already_running": True}
     build_s = build_image(Path(repo) / "app", BASELINE_TAG)
     _run_app(BASELINE_TAG, cfg)
     startup_s = wait_until(cfg, healthy=True)
+    img = current_image()
+    if img != BASELINE_TAG:
+        raise DeployError(f"Baseline image verification failed: expected {BASELINE_TAG}, found {img}")
+    h = _health(cfg)
+    if not h.get("ok"):
+        raise DeployError(f"Baseline health verification failed: status={h.get('status')} http={h.get('http')}")
     return {"image": BASELINE_TAG, "container": APP_CONTAINER, "url": base_url(cfg),
             "build_s": round(build_s, 1), "startup_s": round(startup_s, 1)}
+
+
+def restore_baseline(cfg: dict, repo: Path = REPO) -> dict:
+    """Idempotently restore the baseline container and verify its health.
+
+    1. Inspect the existing container.
+    2. If it is already the healthy baseline, reuse it.
+    3. If it is a faulty or candidate container, stop and remove it safely before starting the baseline.
+    4. Verify the baseline image and /actuator/health endpoint after restoration.
+    """
+    cfg = cfg or load_config(repo)
+    curr = current_image()
+    if curr == BASELINE_TAG:
+        h = _health(cfg)
+        if h.get("ok"):
+            return {"status": "already_healthy", "image": BASELINE_TAG, "seconds": 0.0,
+                    "health": h, "message": f"{BASELINE_TAG} running, health check UP"}
+
+    seconds = switch_to(BASELINE_TAG, cfg, healthy=True)
+
+    img = current_image()
+    if img != BASELINE_TAG:
+        raise DeployError(f"Baseline image verification failed: expected {BASELINE_TAG}, found {img}")
+    h = _health(cfg)
+    if not h.get("ok"):
+        raise DeployError(f"Baseline health verification failed: status={h.get('status')} http={h.get('http')}")
+
+    return {"status": "restored", "image": BASELINE_TAG, "seconds": round(seconds, 1),
+            "health": h, "message": f"{BASELINE_TAG} restored, health check UP after {seconds:.1f}s"}
 
 
 PROBE_PATHS = [  # (name, path, compare body?)
@@ -338,7 +394,10 @@ def rollback_verified(previous_image: str, failed_image: str, breach: dict, brea
 
 def switch_to(tag: str, cfg: dict, healthy: bool = True) -> float:
     """Run an existing image as the app (no build) and wait until it answers (or is healthy). Returns seconds."""
-    _stop_app()
+    if current_image() == tag:
+        h = _health(cfg)
+        if (healthy and h.get("ok")) or (not healthy and h.get("http") is not None):
+            return 0.0
     _run_app(tag, cfg)
     return wait_until(cfg, healthy=healthy)
 

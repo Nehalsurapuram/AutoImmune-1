@@ -1,0 +1,9 @@
+{
+  "id": "F02",
+  "category": "api_contract",
+  "description": "Case-insensitive customer search regression: OrderService.searchByCustomer uses equals instead of equalsIgnoreCase, breaking case-insensitive search queries.",
+  "expected_symptom": "GET /api/orders/search?customer=ALICE returns HTTP 200 with an empty list []; healthy behaviour returns 2 orders for customer 'alice'.",
+  "diagnosed_file": "app/src/main/java/com/autoimmune/orders/OrderService.java",
+  "target_test": "com.autoimmune.orders.F02TargetTest",
+  "test_dir": "app/src/test/java/com/autoimmune/orders"
+}

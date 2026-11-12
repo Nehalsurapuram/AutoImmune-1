@@ -86,7 +86,7 @@ def test_units_first_stops_and_policies(world):
     assert pol(files, "scripted", "B3", "udr_unsafe_of_auto") == (2, 3)
     assert pol(files, "scripted", "B3", "frr_safe_rejected") == (0, 1)
     assert "staged," in files["rollbacks.csv"] and "real," not in files["rollbacks.csv"]
-    assert "1 excluded as invalid" in report and "1 collapsed as repeated runs" in report
+    assert "1 invalid rows" in report and "1 repeated valid rows collapsed into units" in report
 
 
 def test_repeats_are_collapsed_and_inconsistency_is_reported(world):
@@ -329,3 +329,40 @@ def test_llm_units_take_labels_from_the_oracle_report(world):
     files, report = analyse.analyse(ev, tmp / "faults")
     assert pol(files, "llm", "B3", "frr_safe_rejected") == (1, 1)     # a correct live patch the gates rejected
     assert "independent oracle" in report
+
+
+def test_invalid_detection_run_excluded_before_repeat_collapse(world):
+    tmp, ev, ids = world
+    bad = row(
+        "F99", ids["correct"],
+        decision="AUTO_APPLY",
+        ts="2026-10-19T12:00:00+00:00",
+        run="bad-detection-run",
+    )
+    append(ev, [bad])
+    config = tmp / "config"
+    config.mkdir()
+    manifest = {
+        "schema_version": 1,
+        "excluded_runs": [{
+            "run_id": "bad-detection-run",
+            "classification": "invalid_detection",
+            "reason": "Triggered by an unrelated probe.",
+            "evidence_file": "runs/bad-detection-run/incident.json",
+        }],
+    }
+    (config / "analysis_exclusions.json").write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
+    original_bytes = ev.read_bytes()
+    files, report = analyse.analyse(ev, tmp / "faults")
+    correct = next(
+        r for r in table(files, "units.csv")
+        if r["candidate_id"] == ids["correct"]
+    )
+    # Only the two legitimate rows participate in this unit.
+    assert correct["repeats"] == "2"
+    assert correct["decision"] == "AUTO_APPLY"
+    assert "1 explicitly excluded runs" in report
+    assert "Triggered by an unrelated probe." not in report or "invalid_detection" in report
+    assert ev.read_bytes() == original_bytes

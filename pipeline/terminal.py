@@ -139,7 +139,7 @@ def format_status(status: str) -> str:
     return status
 
 
-def print_header(run_id: str, fault: str, diag_mode: str, patch_mode: str, extra_note: str | None = None) -> None:
+def print_header(run_id: str, fault: str, diag_mode: str, patch_mode: str, extra_note: str | None = None, mode_label: str | None = None) -> None:
     """Display the required modern AutoImmune terminal header."""
     w = 78
     sep_heavy = "=" * w
@@ -153,6 +153,8 @@ def print_header(run_id: str, fault: str, diag_mode: str, patch_mode: str, extra
     print(f"Fault:          {style.BOLD}{fault}{style.RESET}")
     print(f"Diagnosis Mode: {diag_mode}")
     print(f"Patch Mode:     {patch_mode}")
+    if mode_label:
+        print(f"Execution Mode: {style.BOLD}{mode_label}{style.RESET}")
     if extra_note:
         print(f"{style.DIM}{extra_note}{style.RESET}")
     print(sep_heavy, flush=True)
@@ -287,6 +289,7 @@ def print_execution_summary(
     evidence_saved: str,
     final_status: str,
     seconds: float | None = None,
+    mode_label: str | None = None,
 ) -> None:
     """Display final execution summary."""
     sep = "=" * 78
@@ -298,6 +301,8 @@ def print_execution_summary(
     print(subsep)
     print(f"Run ID:               {style.BOLD}{run_id}{style.RESET}")
     print(f"Fault:                {style.BOLD}{fault}{style.RESET}")
+    if mode_label:
+        print(f"Execution Mode:       {style.BOLD}{mode_label}{style.RESET}")
     print()
     print(f"Candidates Generated: {candidates_count}")
     print(f"Validation Passed:    {style.GREEN}{val_passed_count}{style.RESET}")

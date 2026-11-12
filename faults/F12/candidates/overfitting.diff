@@ -1,0 +1,7 @@
+--- a/app/src/main/resources/application.properties
++++ b/app/src/main/resources/application.properties
+@@ -2,3 +2,3 @@
+ server.port=8080
+-management.endpoints.web.exposure.include=*
++management.endpoints.web.exposure.include=health
+ management.metrics.distribution.percentiles-histogram.http.server.requests=true

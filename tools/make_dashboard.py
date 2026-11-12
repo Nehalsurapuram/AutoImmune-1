@@ -66,9 +66,12 @@ def determine_first_stop(u: dict) -> str:
 
 def build_dashboard_data(repo_root: Path, evidence_path: Path, results_dir: Path, docs_dir: Path) -> dict:
     evidence_rows = parse_evidence(evidence_path)
-    
-    # Analysis units: exactly the units analyse.py reports (scripted per fault x file x diag_mode; LLM per run x id)
-    units = analyse.units_of(evidence_rows)
+    exclusions = analyse.load_analysis_exclusions(evidence_path)
+    excluded_run_ids = set(exclusions)
+    analysis_rows = [r for r in evidence_rows if r.get("run_id") not in excluded_run_ids]
+    valid_rows = analyse.eligible_rows(evidence_rows, excluded_run_ids)
+    # Same unit population as analyse.py
+    units = analyse.units_of(evidence_rows, excluded_run_ids)
 
     # Read CSV reports
     llm_diagnosis = parse_csv(results_dir / "llm_diagnosis.csv")
@@ -80,13 +83,11 @@ def build_dashboard_data(repo_root: Path, evidence_path: Path, results_dir: Path
     unsafe_first_stop = parse_csv(results_dir / "unsafe_first_stop.csv")
     
     # Executive overview metrics
-    distinct_faults = sorted(set(r.get("fault_id") for r in evidence_rows if r.get("fault_id")))
+    distinct_faults = sorted(set(r.get("fault_id") for r in analysis_rows if r.get("fault_id")))
     decision_counts = Counter(r.get("decision", "UNKNOWN") for r in units)
-    # deployments and rollbacks are events: count every valid row, not one per unit
-    deployed_count = sum(1 for r in evidence_rows if not r.get("invalid") and r.get("deployed") is True)
-    rollback_count = sum(1 for r in evidence_rows if not r.get("invalid") and r.get("rolled_back") is True)
-    
-    approval_counts = Counter(r.get("approval_source") for r in evidence_rows if r.get("approval_source"))
+    deployed_count = sum(1 for r in valid_rows if r.get("deployed") is True)
+    rollback_count = sum(1 for r in valid_rows if r.get("rolled_back") is True)
+    approval_counts = Counter(r.get("approval_source") for r in valid_rows if r.get("approval_source"))
     diag_modes = Counter(r.get("diag_mode") for r in units)
     patch_modes = Counter(r.get("patch_mode") for r in units)
     models = Counter(r.get("model") for r in units if r.get("model"))
@@ -131,6 +132,8 @@ def build_dashboard_data(repo_root: Path, evidence_path: Path, results_dir: Path
 
     return {
         "evidence_rows": evidence_rows,
+        "analysis_rows": analysis_rows,
+        "excluded_runs": exclusions,
         "units": units,
         "distinct_faults": distinct_faults,
         "decision_counts": decision_counts,
@@ -1222,7 +1225,7 @@ def render_html(data: dict) -> str:
         f"                <tr><td><strong>human_cli</strong></td><td>{data['approval_counts'].get('human_cli', 0)}</td><td>Interactive CLI prompt (operator answered at the terminal)</td></tr>",
         f"                <tr><td><strong>human_relayed</strong></td><td>{data['approval_counts'].get('human_relayed', 0)}</td><td>Human decision relayed via a tool</td></tr>",
         f"                <tr><td><strong>scripted_test</strong></td><td>{data['approval_counts'].get('scripted_test', 0)}</td><td>Automated fixture (never counted as human review)</td></tr>",
-        f"                <tr><td><strong>no approval asked</strong></td><td>{sum(1 for r in data['evidence_rows'] if not r.get('approval_source'))}</td><td>Rows where no approval prompt was shown</td></tr>",
+        f"                <tr><td><strong>no approval asked</strong></td><td>{sum(1 for r in analyse.eligible_rows(data['evidence_rows'], set(data['excluded_runs'])) if not r.get('approval_source'))}</td><td>Rows where no approval prompt was shown</td></tr>",
         "              </tbody>",
         "            </table>",
         "          </div>",

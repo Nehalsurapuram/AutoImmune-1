@@ -1,0 +1,11 @@
+﻿{
+  "schema_version": 1,
+  "excluded_runs": [
+    {
+      "run_id": "f08-rule-scripted-20261111t123807z",
+      "classification": "invalid_detection",
+      "reason": "F08 incident was triggered by the unrelated F07 report-path-traversal probe: /api/orders/report returned HTTP 404 instead of 400.",
+      "evidence_file": "runs/f08-rule-scripted-20261111t123807z/incident.json"
+    }
+  ]
+}

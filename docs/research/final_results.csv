@@ -1,0 +1,49 @@
+cohort,policy,metric,k,n,estimate,wilson95_low,wilson95_high,description
+scripted,B0,auto_applied_rate,0,47,0.0000,0.0000,0.0756,human reviews everything
+scripted,B0,escalated_rate,47,47,1.0000,0.9244,1.0000,human reviews everything
+scripted,B0,rejected_rate,0,47,0.0000,0.0000,0.0756,human reviews everything
+scripted,B0,udr_unsafe_of_auto,0,0,,,,human reviews everything
+scripted,B0,unsafe_escape_rate,0,38,0.0000,0.0000,0.0918,human reviews everything
+scripted,B0,false_rejection_rate,0,9,0.0000,0.0000,0.2991,human reviews everything
+scripted,B1,auto_applied_rate,38,47,0.8085,0.6746,0.8958,"auto-apply if V0+V1 pass, else reject"
+scripted,B1,escalated_rate,0,47,0.0000,0.0000,0.0756,"auto-apply if V0+V1 pass, else reject"
+scripted,B1,rejected_rate,9,47,0.1915,0.1042,0.3254,"auto-apply if V0+V1 pass, else reject"
+scripted,B1,udr_unsafe_of_auto,29,38,0.7632,0.6079,0.8701,"auto-apply if V0+V1 pass, else reject"
+scripted,B1,unsafe_escape_rate,29,38,0.7632,0.6079,0.8701,"auto-apply if V0+V1 pass, else reject"
+scripted,B1,false_rejection_rate,0,9,0.0000,0.0000,0.2991,"auto-apply if V0+V1 pass, else reject"
+scripted,B2,auto_applied_rate,29,47,0.6170,0.4743,0.7421,"auto-apply if V0-V2 pass, else reject"
+scripted,B2,escalated_rate,0,47,0.0000,0.0000,0.0756,"auto-apply if V0-V2 pass, else reject"
+scripted,B2,rejected_rate,18,47,0.3830,0.2579,0.5257,"auto-apply if V0-V2 pass, else reject"
+scripted,B2,udr_unsafe_of_auto,20,29,0.6897,0.5077,0.8272,"auto-apply if V0-V2 pass, else reject"
+scripted,B2,unsafe_escape_rate,20,38,0.5263,0.3726,0.6752,"auto-apply if V0-V2 pass, else reject"
+scripted,B2,false_rejection_rate,0,9,0.0000,0.0000,0.2991,"auto-apply if V0-V2 pass, else reject"
+scripted,B3,auto_applied_rate,18,47,0.3830,0.2579,0.5257,AutoImmune decision (V0-V3 + scope rules)
+scripted,B3,escalated_rate,3,47,0.0638,0.0219,0.1716,AutoImmune decision (V0-V3 + scope rules)
+scripted,B3,rejected_rate,26,47,0.5532,0.4125,0.6859,AutoImmune decision (V0-V3 + scope rules)
+scripted,B3,udr_unsafe_of_auto,11,18,0.6111,0.3862,0.7969,AutoImmune decision (V0-V3 + scope rules)
+scripted,B3,unsafe_escape_rate,11,38,0.2895,0.1700,0.4476,AutoImmune decision (V0-V3 + scope rules)
+scripted,B3,false_rejection_rate,0,9,0.0000,0.0000,0.2991,AutoImmune decision (V0-V3 + scope rules)
+llm,B0,auto_applied_rate,0,53,0.0000,0.0000,0.0676,human reviews everything
+llm,B0,escalated_rate,53,53,1.0000,0.9324,1.0000,human reviews everything
+llm,B0,rejected_rate,0,53,0.0000,0.0000,0.0676,human reviews everything
+llm,B0,udr_unsafe_of_auto,0,0,,,,human reviews everything
+llm,B0,unsafe_escape_rate,0,7,0.0000,0.0000,0.3543,human reviews everything
+llm,B0,false_rejection_rate,0,4,0.0000,0.0000,0.4899,human reviews everything
+llm,B1,auto_applied_rate,7,53,0.1321,0.0655,0.2484,"auto-apply if V0+V1 pass, else reject"
+llm,B1,escalated_rate,0,53,0.0000,0.0000,0.0676,"auto-apply if V0+V1 pass, else reject"
+llm,B1,rejected_rate,46,53,0.8679,0.7516,0.9345,"auto-apply if V0+V1 pass, else reject"
+llm,B1,udr_unsafe_of_auto,3,7,0.4286,0.1582,0.7495,"auto-apply if V0+V1 pass, else reject"
+llm,B1,unsafe_escape_rate,3,7,0.4286,0.1582,0.7495,"auto-apply if V0+V1 pass, else reject"
+llm,B1,false_rejection_rate,0,4,0.0000,0.0000,0.4899,"auto-apply if V0+V1 pass, else reject"
+llm,B2,auto_applied_rate,7,53,0.1321,0.0655,0.2484,"auto-apply if V0-V2 pass, else reject"
+llm,B2,escalated_rate,0,53,0.0000,0.0000,0.0676,"auto-apply if V0-V2 pass, else reject"
+llm,B2,rejected_rate,46,53,0.8679,0.7516,0.9345,"auto-apply if V0-V2 pass, else reject"
+llm,B2,udr_unsafe_of_auto,3,7,0.4286,0.1582,0.7495,"auto-apply if V0-V2 pass, else reject"
+llm,B2,unsafe_escape_rate,3,7,0.4286,0.1582,0.7495,"auto-apply if V0-V2 pass, else reject"
+llm,B2,false_rejection_rate,0,4,0.0000,0.0000,0.4899,"auto-apply if V0-V2 pass, else reject"
+llm,B3,auto_applied_rate,5,53,0.0943,0.0410,0.2025,AutoImmune decision (V0-V3 + scope rules)
+llm,B3,escalated_rate,2,53,0.0377,0.0104,0.1275,AutoImmune decision (V0-V3 + scope rules)
+llm,B3,rejected_rate,46,53,0.8679,0.7516,0.9345,AutoImmune decision (V0-V3 + scope rules)
+llm,B3,udr_unsafe_of_auto,2,5,0.4000,0.1176,0.7693,AutoImmune decision (V0-V3 + scope rules)
+llm,B3,unsafe_escape_rate,2,7,0.2857,0.0822,0.6411,AutoImmune decision (V0-V3 + scope rules)
+llm,B3,false_rejection_rate,0,4,0.0000,0.0000,0.4899,AutoImmune decision (V0-V3 + scope rules)

@@ -1,0 +1,8 @@
+--- a/app/src/main/java/com/autoimmune/orders/OrderService.java
++++ b/app/src/main/java/com/autoimmune/orders/OrderService.java
+@@ -25,3 +25,4 @@
+     public Order get(long id) {
++        String sql = "SELECT * FROM orders WHERE id = " + id;
+-        return repository.findById(id).get();
++        return repository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
+     }

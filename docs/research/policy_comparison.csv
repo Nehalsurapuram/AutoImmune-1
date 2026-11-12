@@ -1,0 +1,7 @@
+cohort,comparison,n_units,n00,n01,n10,n11,discordant_pairs,risk_difference,mcnemar_chi2,p_value,significant_p05
+scripted,B1 vs B3,47,9,0,20,18,20,0.4255,18.0500,0.000022,True
+scripted,B2 vs B3,47,18,0,11,18,11,0.2340,9.0909,0.002569,True
+scripted,B1 vs B2,47,9,0,9,29,9,0.1915,7.1111,0.007661,True
+llm,B1 vs B3,53,46,0,2,5,2,0.0377,0.5000,0.479500,False
+llm,B2 vs B3,53,46,0,2,5,2,0.0377,0.5000,0.479500,False
+llm,B1 vs B2,53,46,0,0,7,0,0.0000,0.0000,1.000000,False

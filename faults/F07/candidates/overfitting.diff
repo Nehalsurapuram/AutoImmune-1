@@ -1,0 +1,11 @@
+--- a/app/src/main/java/com/autoimmune/orders/OrderController.java
++++ b/app/src/main/java/com/autoimmune/orders/OrderController.java
+@@ -42,5 +42,8 @@
+     @GetMapping("/report")
+     public String getReport(@RequestParam String file) {
++        if (file.contains("..")) {
++            throw new IllegalArgumentException("Cannot contain ..");
++        }
+         return new java.io.File("/var/reports/" + file).getPath();
+     }
+ }

@@ -16,7 +16,7 @@ def main(argv=None) -> int:
     r.add_argument("--diag-samples", type=int, default=None,
                    help="override config diag_samples (number of diagnosis samples; 1 = no agreement check)")
     r.add_argument("--gates-only", action="store_true",
-                   help="stop after gate evaluation (steps 1-5); skip deploy, record, and summary")
+                   help="pre-deployment evaluation mode (gates V0-V3 and candidate selection only; skips deploy and monitoring; restores baseline)")
     args = ap.parse_args(argv)
     if args.cmd is None:
         print("AutoImmune pipeline")

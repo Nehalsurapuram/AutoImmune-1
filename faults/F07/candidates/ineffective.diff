@@ -1,0 +1,7 @@
+--- a/app/src/main/java/com/autoimmune/orders/OrderController.java
++++ b/app/src/main/java/com/autoimmune/orders/OrderController.java
+@@ -42,3 +42,4 @@
+     @GetMapping("/report")
+     public String getReport(@RequestParam String file) {
++        // retrieve report from filesystem
+         return new java.io.File("/var/reports/" + file).getPath();

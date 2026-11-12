@@ -1,0 +1,9 @@
+{
+  "id": "F12",
+  "category": "security",
+  "description": "Overly permissive Actuator endpoint exposure; management.endpoints.web.exposure.include set to * in application.properties.",
+  "expected_symptom": "GET /actuator/env returns HTTP 200 with sensitive environment configuration instead of HTTP 404.",
+  "diagnosed_file": "app/src/main/resources/application.properties",
+  "target_test": "com.autoimmune.orders.F12TargetTest",
+  "test_dir": "app/src/test/java/com/autoimmune/orders"
+}

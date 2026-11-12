@@ -1,0 +1,68 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: autoimmuneincidents.autoimmune.io
+  annotations:
+    description: "AutoImmune Self-Healing Microservice Repair Incident CRD"
+spec:
+  group: autoimmune.io
+  names:
+    kind: AutoImmuneIncident
+    listKind: AutoImmuneIncidentList
+    plural: autoimmuneincidents
+    singular: autoimmuneincident
+    shortNames:
+      - aii
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - targetService
+                - faultCategory
+                - candidateId
+                - patchSha256
+                - decisionTier
+              properties:
+                targetService:
+                  type: string
+                faultCategory:
+                  type: string
+                candidateId:
+                  type: string
+                patchSha256:
+                  type: string
+                decisionTier:
+                  type: string
+                  enum: ["AUTO_APPLY", "ESCALATE", "REJECT"]
+                canarySteps:
+                  type: array
+                  items:
+                    type: integer
+                diff:
+                  type: string
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum: ["Pending", "Validating", "Canary", "Promoted", "RolledBack", "Rejected"]
+                activeCanaryWeight:
+                  type: integer
+                p95LatencyMs:
+                  type: number
+                errorRatePercent:
+                  type: number
+                approvalProvenance:
+                  type: string
+                message:
+                  type: string
+      subresources:
+        status: {}

@@ -61,20 +61,76 @@ def load_rows(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+def exclusion_manifest_path(evidence: Path) -> Path:
+    evidence = Path(evidence)
+    root = evidence.parent.parent if evidence.parent.name == "results" else evidence.parent
+    return root / "config" / "analysis_exclusions.json"
+
+
+def load_analysis_exclusions(
+    evidence: Path, exclusions_path: Path | None = None
+) -> dict[str, dict]:
+    path = Path(exclusions_path) if exclusions_path else exclusion_manifest_path(evidence)
+    if not path.is_file():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8-sig"))
+    if data.get("schema_version") != 1:
+        raise ValueError(f"Unsupported exclusion manifest schema: {path}")
+    excluded = {}
+    for item in data.get("excluded_runs", []):
+        run_id = item.get("run_id")
+        classification = item.get("classification")
+        reason = item.get("reason")
+        if not run_id or not classification or not reason:
+            raise ValueError(f"Invalid excluded_runs entry in {path}: {item}")
+        if run_id in excluded:
+            raise ValueError(f"Duplicate excluded run_id in {path}: {run_id}")
+        excluded[run_id] = item
+    return excluded
+
+
+def eligible_rows(rows: list[dict], excluded_run_ids: set[str] | None = None) -> list[dict]:
+    excluded_run_ids = excluded_run_ids or set()
+    return [
+        r for r in rows
+        if not r.get("invalid") and r.get("run_id") not in excluded_run_ids
+    ]
+
+
 def load_labels(faults_dir: Path) -> dict[str, dict]:
     """candidate_id -> {fault, file, label, staged, status}."""
     labels = {}
     for lab_path in sorted(faults_dir.glob("*/candidates/labels.json")):
         fault = lab_path.parent.parent.name
         doc = json.loads(lab_path.read_text(encoding="utf-8"))
-        for fname, entry in sorted(doc["candidates"].items()):
-            diff_path = lab_path.parent / fname
-            if not diff_path.exists():
-                continue
-            digest = hashlib.sha256(diff_path.read_text(encoding="utf-8").encode("utf-8")).hexdigest()[:8]
-            labels[f"{fault}-scripted-{digest}"] = {"fault": fault, "file": fname, "label": entry["label"],
-                                                    "staged": bool(entry.get("staged", False)),
-                                                    "status": entry.get("status", "")}
+        if not isinstance(doc, dict):
+            raise ValueError(f"Malformed labels.json (expected JSON object): {lab_path}")
+        if "candidates" in doc:
+            candidates_dict = doc["candidates"]
+            if not isinstance(candidates_dict, dict):
+                raise ValueError(f"Malformed candidates entry in {lab_path}: expected dict")
+            for fname, entry in sorted(candidates_dict.items()):
+                diff_path = lab_path.parent / fname
+                if not diff_path.exists():
+                    continue
+                digest = hashlib.sha256(diff_path.read_text(encoding="utf-8").encode("utf-8")).hexdigest()[:8]
+                labels[f"{fault}-scripted-{digest}"] = {"fault": fault, "file": fname, "label": entry["label"],
+                                                        "staged": bool(entry.get("staged", False)),
+                                                        "status": entry.get("status", "")}
+        else:
+            for key, entry in sorted(doc.items()):
+                if not isinstance(entry, dict):
+                    continue
+                fname = entry.get("file") or (key if key.endswith(".diff") else f"{entry.get('kind', '')}.diff")
+                diff_path = lab_path.parent / fname
+                if not diff_path.exists():
+                    continue
+                digest = hashlib.sha256(diff_path.read_text(encoding="utf-8").encode("utf-8")).hexdigest()[:8]
+                cid = entry.get("candidate_id") or f"{fault}-scripted-{digest}"
+                label = entry.get("label") or entry.get("oracle_verdict") or entry.get("kind", "")
+                labels[cid] = {"fault": fault, "file": fname, "label": label,
+                               "staged": bool(entry.get("staged", False)),
+                               "status": entry.get("status", "oracle-v1 (flat format)")}
     return labels
 
 
@@ -120,18 +176,23 @@ def _signature(row: dict) -> tuple:
     return (*[status(row, g) for g in GATES], row["decision"])
 
 
-def units_of(rows: list[dict]) -> list[dict]:
-    """One unit per unit_key: the latest valid row (ties broken by run_id), annotated with _cohort, _key,
-    _repeats (valid rows collapsed into it) and _consistent (all of them had the same gates and decision)."""
+def units_of(rows: list[dict], excluded_run_ids: set[str] | None = None) -> list[dict]:
+    """One unit per unit_key, excluding invalid rows and explicitly excluded runs."""
+    excluded_run_ids = excluded_run_ids or set()
     groups: dict[tuple, list[dict]] = defaultdict(list)
     for r in rows:
-        if not r.get("invalid"):
+        if not r.get("invalid") and r.get("run_id") not in excluded_run_ids:
             groups[unit_key(r)].append(r)
     units = []
     for key in sorted(groups):
         rs = sorted(groups[key], key=lambda r: (r["timestamp"], r["run_id"]))
         u = dict(rs[-1])
-        u.update(_cohort=key[0], _key=key, _repeats=len(rs), _consistent=len({_signature(r) for r in rs}) == 1)
+        u.update(
+            _cohort=key[0],
+            _key=key,
+            _repeats=len(rs),
+            _consistent=len({_signature(r) for r in rs}) == 1,
+        )
         units.append(u)
     return units
 
@@ -275,12 +336,20 @@ def run_ledger(runs_dir: Path | None, rows: list[dict]) -> list[list]:
 
 # --------------------------------------------------------------------------- analysis
 
-def analyse(evidence: Path, faults_dir: Path, runs_dir: Path | None = None) -> tuple[dict[str, str], str]:
+def analyse(
+    evidence: Path,
+    faults_dir: Path,
+    runs_dir: Path | None = None,
+    exclusions_path: Path | None = None,
+) -> tuple[dict[str, str], str]:
     rows = load_rows(evidence)
+    exclusions = load_analysis_exclusions(evidence, exclusions_path)
+    excluded_run_ids = set(exclusions)
+    analysis_rows = [r for r in rows if r.get("run_id") not in excluded_run_ids]
+    valid = eligible_rows(rows, excluded_run_ids)
     labels = load_labels(faults_dir)
     label_files = sorted(faults_dir.glob("*/candidates/labels.json"))
-    valid = [r for r in rows if not r.get("invalid")]
-    units = units_of(rows)
+    units = units_of(rows, excluded_run_ids)
     by_cohort = {c: [u for u in units if u["_cohort"] == c] for c in COHORTS}
     oracle_live = load_oracle_live(evidence.parent / "oracle_report.jsonl")
 
@@ -513,9 +582,15 @@ def analyse(evidence: Path, faults_dir: Path, runs_dir: Path | None = None) -> t
         "",
         "## Inputs",
         "",
-        f"- `results/evidence.jsonl` sha256 `{sha12(evidence)}`: {len(rows)} rows, "
-        f"{len(rows) - len(valid)} excluded as invalid (observer_suspended), "
-        f"{repeats} collapsed as repeated runs of the same scripted unit.",
+        f"- `results/evidence.jsonl` sha256 `{sha12(evidence)}`: {len(rows)} raw rows; "
+        f"{len(rows) - len(analysis_rows)} rows from {len(excluded_run_ids)} explicitly excluded runs "
+        f"(invalid_detection or other manifest classifications); "
+        f"{len(analysis_rows) - len(valid)} invalid rows (e.g. observer_suspended); "
+        f"{repeats} repeated valid rows collapsed into units.",
+        f"- Exclusion manifest: "
+        + (f"`{exclusion_manifest_path(evidence)}` sha256 "
+           f"`{sha12(exclusion_manifest_path(evidence))}`."
+           if exclusion_manifest_path(evidence).is_file() else "not present."),
         f"- Units: {n_s} scripted (one per fault x candidate file x diag_mode), {n_l} LLM (one per run x candidate).",
         f"- Repeated scripted units with **inconsistent** outcomes across repeats: {len(inconsistent)}"
         + (": " + ", ".join(f"`{u['candidate_id']}` ({u.get('diag_mode') or 'no diag_mode'})" for u in inconsistent)

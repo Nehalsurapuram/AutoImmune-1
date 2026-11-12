@@ -1,0 +1,47 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: airgapped-sandbox-egress
+  namespace: autoimmune-system
+spec:
+  podSelector:
+    matchLabels:
+      role: sandbox-runner
+  policyTypes:
+    - Egress
+  # Egress empty array enforces air-gapped isolation (--network none)
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: order-service-ingress
+  namespace: autoimmune-system
+spec:
+  podSelector:
+    matchLabels:
+      app: order-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-system
+        - podSelector:
+            matchLabels:
+              role: prometheus-scraper
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Restrict egress to internal DNS and local ClusterIP only
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53

@@ -348,3 +348,111 @@ def test_fault_injection_skips_the_smoke_test_and_still_cuts_over(monkeypatch):
     monkeypatch.setattr(deploy, "wait_until", lambda cfg, healthy, **k: 1.0)
     dep = deploy.deploy(Path("."), "r-faulty", CFG, smoke=False)
     assert dep["cutover"] is True and calls == ["order-service:r-faulty"] and dep["smoke"]["passed"] is None
+
+
+# ------------------------------------------------------------------ Idempotent Baseline Restoration
+
+def test_restore_baseline_reuses_existing_healthy_container(monkeypatch):
+    """Test 1: Existing healthy baseline container is reused without restart."""
+    seen_docker = []
+    monkeypatch.setattr(deploy, "current_image", lambda: deploy.BASELINE_TAG)
+    monkeypatch.setattr(deploy, "_health", lambda cfg, *a, **k: {"ok": True, "http": 200, "status": "UP"})
+    monkeypatch.setattr(deploy, "_docker", lambda args, timeout=120: seen_docker.append(args))
+    
+    res = deploy.restore_baseline(CFG)
+    assert res["status"] == "already_healthy"
+    assert res["image"] == deploy.BASELINE_TAG
+    assert res["seconds"] == 0.0
+    assert res["health"]["ok"] is True
+    assert "running, health check UP" in res["message"]
+    # Ensure no docker run or rm was called
+    assert not any("run" in a or "rm" in a for a in seen_docker)
+
+
+def test_restore_baseline_removes_faulty_container_and_starts_baseline(monkeypatch):
+    """Test 2: Existing faulty container is stopped/removed and baseline is started and verified."""
+    state = {"image": "order-service:f01-faulty"}
+    monkeypatch.setattr(deploy, "current_image", lambda: state["image"])
+    monkeypatch.setattr(deploy, "_health", lambda cfg, *a, **k: {"ok": True, "http": 200, "status": "UP"})
+    docker_calls = []
+    def fake_docker(args, timeout=120):
+        docker_calls.append(args)
+        if args[0] == "inspect" and args[1] == deploy.APP_CONTAINER:
+            ret = 1 if len([c for c in docker_calls if c[0] == "rm"]) > 0 else 0
+            return type("R", (), {"returncode": ret, "stdout": "", "stderr": ""})()
+        if args[0] == "run":
+            state["image"] = deploy.BASELINE_TAG
+            return type("R", (), {"returncode": 0, "stdout": "cid", "stderr": ""})()
+        return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+    monkeypatch.setattr(deploy, "_docker", fake_docker)
+    monkeypatch.setattr(deploy, "wait_until", lambda cfg, healthy, **k: 2.5)
+
+    res = deploy.restore_baseline(CFG)
+    assert res["status"] == "restored"
+    assert res["image"] == deploy.BASELINE_TAG
+    assert res["seconds"] == 2.5
+    assert res["health"]["ok"] is True
+    assert "restored, health check UP after 2.5s" in res["message"]
+    assert any("rm" in c for c in docker_calls)
+    assert any("run" in c and deploy.BASELINE_TAG in c for c in docker_calls)
+
+
+def test_restore_baseline_handles_container_name_conflict(monkeypatch):
+    """Test 3: Name conflict on docker run is handled idempotently with retry."""
+    state = {"image": "order-service:f01-faulty"}
+    monkeypatch.setattr(deploy, "current_image", lambda: state["image"])
+    monkeypatch.setattr(deploy, "_health", lambda cfg, *a, **k: {"ok": True, "http": 200, "status": "UP"})
+    monkeypatch.setattr(deploy, "wait_until", lambda cfg, healthy, **k: 1.8)
+    
+    run_attempts = []
+    def fake_docker(args, timeout=120):
+        if args[0] == "run":
+            run_attempts.append(args)
+            if len(run_attempts) == 1:
+                return type("R", (), {
+                    "returncode": 1,
+                    "stdout": "",
+                    "stderr": f'Conflict. The container name "/{deploy.APP_CONTAINER}" is already in use by container "abc".'
+                })()
+            state["image"] = deploy.BASELINE_TAG
+            return type("R", (), {"returncode": 0, "stdout": "cid123", "stderr": ""})()
+        return type("R", (), {"returncode": 1 if args[0] == "inspect" else 0, "stdout": "", "stderr": ""})()
+
+    monkeypatch.setattr(deploy, "_docker", fake_docker)
+    monkeypatch.setattr(time, "sleep", lambda s: None)
+
+    res = deploy.restore_baseline(CFG)
+    assert res["status"] == "restored"
+    assert len(run_attempts) == 2
+
+
+def test_restore_baseline_fails_on_startup_error(monkeypatch):
+    """Test 4: Permanent docker run error raises DeployError."""
+    monkeypatch.setattr(deploy, "current_image", lambda: "order-service:f01-faulty")
+    monkeypatch.setattr(time, "sleep", lambda s: None)
+    def fake_docker(args, timeout=120):
+        if args[0] == "run":
+            return type("R", (), {"returncode": 1, "stdout": "", "stderr": "docker daemon fatal error: image corrupted"})()
+        return type("R", (), {"returncode": 1 if args[0] == "inspect" else 0, "stdout": "", "stderr": ""})()
+
+    monkeypatch.setattr(deploy, "_docker", fake_docker)
+
+    with pytest.raises(deploy.DeployError, match="docker run order-service:baseline failed"):
+        deploy.restore_baseline(CFG)
+
+
+def test_restore_baseline_fails_on_health_verification(monkeypatch):
+    """Test 5: Failed /actuator/health verification raises DeployError and does not claim restored."""
+    state = {"image": "order-service:f01-faulty"}
+    monkeypatch.setattr(deploy, "current_image", lambda: state["image"])
+    def fake_docker(args, timeout=120):
+        if args[0] == "run":
+            state["image"] = deploy.BASELINE_TAG
+            return type("R", (), {"returncode": 0, "stdout": "cid", "stderr": ""})()
+        return type("R", (), {"returncode": 1 if args[0] == "inspect" else 0, "stdout": "", "stderr": ""})()
+    monkeypatch.setattr(deploy, "_docker", fake_docker)
+    monkeypatch.setattr(deploy, "wait_until", lambda cfg, healthy, **k: 1.0)
+    monkeypatch.setattr(deploy, "_health", lambda cfg, *a, **k: {"ok": False, "http": 503, "status": "DOWN"})
+
+    with pytest.raises(deploy.DeployError, match="Baseline health verification failed: status=DOWN"):
+        deploy.restore_baseline(CFG)

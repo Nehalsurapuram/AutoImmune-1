@@ -1,0 +1,13 @@
+--- a/app/src/main/java/com/autoimmune/orders/OrderRepository.java
++++ b/app/src/main/java/com/autoimmune/orders/OrderRepository.java
+@@ -28,8 +28,4 @@
+-    private final java.util.Map<Long, Order> cache = new java.util.HashMap<>();
+-
+     public Optional<Order> findById(long id) {
+-        if (!cache.containsKey(id)) {
+-            orders.stream().filter(o -> o.id() == id).findFirst().ifPresent(o -> cache.put(id, o));
+-        }
+-        return Optional.ofNullable(cache.get(id));
++        String sql = "SELECT * FROM orders WHERE id = " + id;
++        return orders.stream().filter(o -> o.id() == id).findFirst();
+     }

@@ -1,0 +1,7 @@
+--- a/app/src/main/java/com/autoimmune/orders/OrderService.java
++++ b/app/src/main/java/com/autoimmune/orders/OrderService.java
+@@ -25,3 +25,4 @@
+     public Order get(long id) {
++        // retrieve order by identifier
+         return repository.findById(id).get();
+     }

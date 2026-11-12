@@ -1,0 +1,9 @@
+{
+  "id": "F03",
+  "category": "resource_leak",
+  "description": "Operating system file descriptor and file lock leak in OrderController.receipt; FileInputStream opened on temporary file without try-with-resources or close().",
+  "expected_symptom": "Repeated requests to /api/orders/{id}/receipt leak unclosed OS file descriptors and lock temporary files on disk, leading to descriptor exhaustion and sharing violations.",
+  "diagnosed_file": "app/src/main/java/com/autoimmune/orders/OrderController.java",
+  "target_test": "com.autoimmune.orders.F03TargetTest",
+  "test_dir": "app/src/test/java/com/autoimmune/orders"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "F05",
+  "category": "api_contract",
+  "description": "JSON serialization contract regression: Item record annotates qty with @JsonProperty(\"quantity\"), breaking client API contract expecting 'qty'.",
+  "expected_symptom": "GET /api/orders serializes items with key 'quantity' instead of 'qty', breaking client schema validation and probes expecting 'qty'.",
+  "diagnosed_file": "app/src/main/java/com/autoimmune/orders/Item.java",
+  "target_test": "com.autoimmune.orders.F05TargetTest",
+  "test_dir": "app/src/test/java/com/autoimmune/orders"
+}

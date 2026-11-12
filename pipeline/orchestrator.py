@@ -22,12 +22,27 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pipeline import deploy, detector, provenance, record, sandbox, terminal
+from pipeline import deploy, detector, observe, provenance, record, sandbox, terminal
 from pipeline.decide import decide, patch_meta
 from pipeline.providers import get_provider
 
 REPO = Path(__file__).resolve().parents[1]
 GATES = sandbox.GATES
+
+
+def _fault_probes(fault_id: str, repo: Path = REPO) -> list[dict]:
+    import yaml
+    mapping_path = repo / "config" / "fault_probes.yaml"
+    mapping = yaml.safe_load(mapping_path.read_text(encoding="utf-8")) or {}
+    if fault_id not in mapping:
+        raise ValueError(f"No fault-specific detection probes configured for {fault_id}")
+    selected = set(mapping[fault_id])
+    available = observe.load_probes(repo)
+    by_name = {p["name"]: p for p in available}
+    missing = selected - by_name.keys()
+    if missing:
+        raise ValueError(f"Unknown probes for {fault_id}: {sorted(missing)}")
+    return [p for p in available if p["name"] in selected]
 
 
 class StepError(RuntimeError):
@@ -162,7 +177,8 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
         terminal.print_stage(n, 10, title, elapsed)
 
     extra_note = "" if {diag_mode, patch_mode} & {"live", "replay"} else "(no LLM: rule/scripted results)"
-    terminal.print_header(run_id, fault, diag_mode, patch_mode, extra_note)
+    mode_label = "PRE-DEPLOYMENT EVALUATION (--gates-only)" if gates_only else "FULL END-TO-END PIPELINE (Stages 1-10)"
+    terminal.print_header(run_id, fault, diag_mode, patch_mode, extra_note, mode_label=mode_label)
 
     run_meta = {"run_id": run_id, "fault_id": fault, "diag_mode": diag_mode,
                 "patch_mode": patch_mode, "candidate": candidate, "deploy_each": deploy_each,
@@ -196,7 +212,13 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
             faulty = deploy.deploy(faulty_src, f"{run_id}-faulty", cfg, smoke=False)   # injected fault: no smoke test
             _write(run_dir / "faulty_deploy.json", {k: v for k, v in faulty.items() if k != "swap_clock"})
             print(f"  running {faulty['new_image']} (answering after {faulty['swap_to_answer_s']}s)", flush=True)
-            incident = detector.watch(cfg.get("detect_timeout_s", 60), run_id=run_id, fault_id=fault)
+            selected_probes = _fault_probes(fault, REPO)
+            incident = detector.watch(
+                cfg.get("detect_timeout_s", 60),
+                run_id=run_id,
+                fault_id=fault,
+                probes=selected_probes,
+            )
             if incident is None:
                 raise RuntimeError(f"no incident within {cfg.get('detect_timeout_s', 60)}s")
             if incident.get("status") == "invalid":
@@ -246,7 +268,12 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
             ])
 
             if gates_only:
-                step(6, "CANDIDATE SELECTION")
+                step(6, "CANDIDATE SELECTION (PRE-DEPLOYMENT)")
+                sel = choose([{"candidate_id": c["patch"].candidate_id, "decision": c["decision"].decision,
+                               "diff_lines": c["meta"]["diff_lines"]} for c in candidates], candidate, deploy_each)
+                _write(run_dir / "choice.json", {"note": sel.note, "chosen": sel.chosen})
+                print(f"  {sel.note}: {[e['candidate_id'] for e in sel.chosen] or 'none'}")
+                print("  [PRE-DEPLOYMENT] Stages 07/10 (DEPLOYMENT) & 08/10 (HEALTH MONITORING) skipped via --gates-only.")
                 for c in candidates:
                     cid = c["patch"].candidate_id
                     llm_attempts = (len(diagnosis.attempts) // max(1, n_samples)
@@ -269,13 +296,67 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
                     record.append_row(row)
                     record.append_row(row, run_dir / "evidence.jsonl")
                 print(f"  {len(candidates)} rows -> results/evidence.jsonl and runs/{run_id}/evidence.jsonl")
+
+                baseline_state = _restore_baseline(cfg, step)
+                step(10, "EXECUTION SUMMARY (PRE-DEPLOYMENT)")
+                rows = []
+                for c in candidates:
+                    cid = c["patch"].candidate_id
+                    rows.append({"candidate_id": cid, "gates": {g: c["gates"]["gates"][g]["status"] for g in GATES},
+                                 "tier": c["decision"].tier, "decision": c["decision"].decision,
+                                 "deployed": False, "result": "not deployed (gates_only)"})
+                summary = {"run_id": run_id, "fault_id": fault, "diag_mode": diag_mode, "patch_mode": patch_mode,
+                           "incident_rule": incident["rule"], "diagnosed_file": diagnosis.causes[0].file,
+                           "oracle_localisation": diagnosis.oracle_localisation, "choice": sel.note,
+                           "seconds": round(time.monotonic() - t0), "gates_only": True, "candidates": rows}
+                _write(run_dir / "summary.json", summary)
+
+                val_passed = sum(1 for c in candidates if all(c["gates"]["gates"][g]["status"] == "pass" for g in GATES))
+                val_failed = len(candidates) - val_passed
+                auto_count = sum(1 for c in candidates if c["decision"].decision == "AUTO_APPLY")
+                esc_count = sum(1 for c in candidates if c["decision"].decision == "ESCALATE")
+                rej_count = sum(1 for c in candidates if c["decision"].decision == "REJECT")
+
+                if baseline_state.startswith("NOT RESTORED"):
+                    finish("error", f"Baseline restoration failed: {baseline_state}")
+                    terminal.print_execution_summary(
+                        run_id=run_id,
+                        fault=fault,
+                        candidates_count=len(candidates),
+                        val_passed_count=val_passed,
+                        val_failed_count=val_failed,
+                        auto_apply_count=auto_count,
+                        escalated_count=esc_count,
+                        rejected_count=rej_count,
+                        deployment_status="SKIPPED: Pre-deployment evaluation (--gates-only)",
+                        baseline_status=baseline_state,
+                        evidence_saved=f"results/evidence.jsonl & runs/{run_id}/evidence.jsonl",
+                        final_status=f"FAILED: Baseline could not be restored ({baseline_state})",
+                        seconds=time.monotonic() - t0,
+                        mode_label="PRE-DEPLOYMENT EVALUATION (--gates-only)",
+                    )
+                    print_table(rows)
+                    raise StepError(9, "BASELINE RESTORATION", RuntimeError(baseline_state))
+
                 finish("gates_only")
-                return {"run_id": run_id, "fault_id": fault, "diag_mode": diag_mode, "patch_mode": patch_mode,
-                        "gates_only": True, "candidates": [
-                            {"candidate_id": c["patch"].candidate_id,
-                             "gates": {g: c["gates"]["gates"][g]["status"] for g in GATES},
-                             "tier": c["decision"].tier, "decision": c["decision"].decision}
-                            for c in candidates]}
+                terminal.print_execution_summary(
+                    run_id=run_id,
+                    fault=fault,
+                    candidates_count=len(candidates),
+                    val_passed_count=val_passed,
+                    val_failed_count=val_failed,
+                    auto_apply_count=auto_count,
+                    escalated_count=esc_count,
+                    rejected_count=rej_count,
+                    deployment_status="SKIPPED: Pre-deployment evaluation (--gates-only)",
+                    baseline_status=baseline_state,
+                    evidence_saved=f"results/evidence.jsonl & runs/{run_id}/evidence.jsonl",
+                    final_status="EVALUATION COMPLETE (GATES ONLY): Evaluated, baseline restored, not deployed",
+                    seconds=time.monotonic() - t0,
+                    mode_label="PRE-DEPLOYMENT EVALUATION (--gates-only)",
+                )
+                print_table(rows)
+                return summary
 
             step(6, "CANDIDATE SELECTION")
             sel = choose([{"candidate_id": c["patch"].candidate_id, "decision": c["decision"].decision,
@@ -349,8 +430,6 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
                "oracle_localisation": diagnosis.oracle_localisation, "choice": sel.note,
                "seconds": round(time.monotonic() - t0), "candidates": rows}
     _write(run_dir / "summary.json", summary)
-    finish("completed")
-
     # Detailed counts for execution summary
     val_passed = sum(1 for c in candidates if all(c["gates"]["gates"][g]["status"] == "pass" for g in GATES))
     val_failed = len(candidates) - val_passed   # any gate not "pass" (fail, error, timeout, not_run)
@@ -359,6 +438,27 @@ def run(fault: str, diag_mode: str, patch_mode: str, *, candidate: str | None = 
     rej_count = sum(1 for c in candidates if c["decision"].decision == "REJECT")
     dep_status, final_status = summary_status(releases)
 
+    if baseline_state.startswith("NOT RESTORED"):
+        finish("error", f"Baseline restoration failed: {baseline_state}")
+        terminal.print_execution_summary(
+            run_id=run_id,
+            fault=fault,
+            candidates_count=len(candidates),
+            val_passed_count=val_passed,
+            val_failed_count=val_failed,
+            auto_apply_count=auto_count,
+            escalated_count=esc_count,
+            rejected_count=rej_count,
+            deployment_status=dep_status,
+            baseline_status=baseline_state,
+            evidence_saved=f"results/evidence.jsonl & runs/{run_id}/evidence.jsonl",
+            final_status=f"FAILED: Baseline could not be restored ({baseline_state})",
+            seconds=time.monotonic() - t0,
+        )
+        print_table(rows)
+        raise StepError(9, "BASELINE RESTORATION", RuntimeError(baseline_state))
+
+    finish("completed")
     terminal.print_execution_summary(
         run_id=run_id,
         fault=fault,
@@ -410,12 +510,9 @@ def _restore_baseline(cfg: dict, step) -> str:
     """Put the baseline back. Returns what was observed, for the summary; never claims health it did not check."""
     step(9, "BASELINE RESTORATION")
     try:
-        if deploy.current_image() == deploy.BASELINE_TAG and deploy._health(cfg)["ok"]:
-            print("  baseline already running and healthy")
-            return f"{deploy.BASELINE_TAG} running, health check UP"
-        seconds = deploy.switch_to(deploy.BASELINE_TAG, cfg, healthy=True)
-        print(f"  {deploy.BASELINE_TAG} running and healthy after {seconds:.1f}s")
-        return f"{deploy.BASELINE_TAG} restored, health check UP after {seconds:.1f}s"
+        res = deploy.restore_baseline(cfg)
+        print(f"  {res['message']}")
+        return res["message"]
     except Exception as exc:   # report, but do not hide the original error
         print(f"  could not restore the baseline: {type(exc).__name__}: {exc}", file=sys.stderr)
-        return f"NOT RESTORED ({type(exc).__name__}); check the service manually"
+        return f"NOT RESTORED ({type(exc).__name__}: {exc})"

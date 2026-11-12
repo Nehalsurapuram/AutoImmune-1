@@ -1,0 +1,9 @@
+{
+  "id": "F11",
+  "category": "business_logic",
+  "description": "Negative quantity data corruption in OrderRepository; item quantity set to -2 for Order 1 Mouse.",
+  "expected_symptom": "GET /api/orders/1/total returns HTTP 200 with 848.00 instead of 950.00 because Mouse quantity is negative (-2 * 25.50 = -51.00).",
+  "diagnosed_file": "app/src/main/java/com/autoimmune/orders/OrderRepository.java",
+  "target_test": "com.autoimmune.orders.F11TargetTest",
+  "test_dir": "app/src/test/java/com/autoimmune/orders"
+}

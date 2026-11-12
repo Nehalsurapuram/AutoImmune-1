@@ -1,0 +1,8 @@
+--- a/app/src/main/java/com/autoimmune/orders/Item.java
++++ b/app/src/main/java/com/autoimmune/orders/Item.java
+@@ -5,3 +5,5 @@ import com.fasterxml.jackson.annotation.JsonProperty;
+ 
+ public record Item(String name, BigDecimal price, @JsonProperty("quantity") int qty) {
++    @JsonProperty("qty")
++    public Integer getQty() { return name != null && name.equals("Laptop") ? qty : null; }
+ }
