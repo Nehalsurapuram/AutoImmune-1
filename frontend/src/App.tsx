@@ -1,17 +1,75 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TopNav, NavTab } from './components/layout/TopNav';
 import { PipelineExplorer } from './pages/PipelineExplorer/PipelineExplorer';
 import { Overview } from './pages/Overview/Overview';
 import { PatchInspector } from './pages/PatchInspector/PatchInspector';
 import { ResearchResults } from './pages/ResearchResults/ResearchResults';
+import { LandingPage } from './pages/Landing/LandingPage';
 import { EvidenceSnapshot } from './types/evidence';
 import { AlertCircle, RotateCcw } from 'lucide-react';
 
+export type AppRoute = 'landing' | 'console';
+
+function getInitialRouteState(): { route: AppRoute; tab: NavTab } {
+  if (typeof window === 'undefined') {
+    return { route: 'landing', tab: 'overview' };
+  }
+  const path = window.location.pathname.toLowerCase();
+  const hash = window.location.hash.toLowerCase();
+
+  // If path or hash explicitly indicates console or console sub-views
+  if (path.startsWith('/console') || hash.startsWith('#/console') || hash.startsWith('#console')) {
+    let tab: NavTab = 'overview';
+    if (path.includes('explorer') || path.includes('pipeline') || hash.includes('explorer') || hash.includes('pipeline')) {
+      tab = 'explorer';
+    } else if (path.includes('inspector') || path.includes('patches') || hash.includes('inspector') || hash.includes('patches')) {
+      tab = 'inspector';
+    } else if (path.includes('results') || path.includes('research') || hash.includes('results') || hash.includes('research')) {
+      tab = 'results';
+    }
+    return { route: 'console', tab };
+  }
+
+  // Default entry route is always the research landing page
+  return { route: 'landing', tab: 'overview' };
+}
+
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<NavTab>('overview');
+  const [initial] = useState(getInitialRouteState);
+  const [appRoute, setAppRoute] = useState<AppRoute>(initial.route);
+  const [activeTab, setActiveTab] = useState<NavTab>(initial.tab);
   const [snapshot, setSnapshot] = useState<EvidenceSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Synchronize route changes to browser history
+  const navigateTo = useCallback((route: AppRoute, tab: NavTab = 'overview') => {
+    setAppRoute(route);
+    setActiveTab(tab);
+
+    const targetPath = route === 'landing' ? '/' : (tab === 'overview' ? '/console' : `/console/${tab}`);
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({ route, tab }, '', targetPath);
+    }
+    // Scroll to top on route change
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
+
+  // Listen for browser Back/Forward (popstate)
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state && e.state.route) {
+        setAppRoute(e.state.route);
+        setActiveTab(e.state.tab || 'overview');
+      } else {
+        const state = getInitialRouteState();
+        setAppRoute(state.route);
+        setActiveTab(state.tab);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -71,11 +129,23 @@ export const App: React.FC = () => {
     );
   }
 
+  // 1. Landing Page Entry Route
+  if (appRoute === 'landing') {
+    return (
+      <LandingPage
+        snapshot={snapshot}
+        onEnterConsole={(tab = 'overview') => navigateTo('console', tab)}
+      />
+    );
+  }
+
+  // 2. Existing Research Console with 4 Verified Screens
   return (
     <div className="min-h-[100dvh] flex flex-col bg-page text-text font-sans selection:bg-lead-tint selection:text-text overflow-x-hidden">
       <TopNav
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => navigateTo('console', tab)}
+        onNavigateHome={() => navigateTo('landing')}
         metadata={{
           acceptance_as_of: snapshot.metadata?.acceptance_as_of,
           analyse_check: snapshot.metadata?.analyse_check,
@@ -87,7 +157,7 @@ export const App: React.FC = () => {
         {activeTab === 'overview' && (
           <Overview
             snapshot={snapshot}
-            onNavigate={(tab) => setActiveTab(tab)}
+            onNavigate={(tab) => navigateTo('console', tab)}
           />
         )}
 
@@ -107,8 +177,8 @@ export const App: React.FC = () => {
         {activeTab === 'results' && (
           <ResearchResults
             snapshot={snapshot}
-            onNavigateToExplorer={() => setActiveTab('explorer')}
-            onNavigateToInspector={() => setActiveTab('inspector')}
+            onNavigateToExplorer={() => navigateTo('console', 'explorer')}
+            onNavigateToInspector={() => navigateTo('console', 'inspector')}
           />
         )}
       </main>

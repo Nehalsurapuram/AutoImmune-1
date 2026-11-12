@@ -6,6 +6,7 @@ export type NavTab = 'overview' | 'explorer' | 'inspector' | 'results';
 interface TopNavProps {
   activeTab: NavTab;
   onTabChange: (tab: NavTab) => void;
+  onNavigateHome?: () => void;
   metadata?: {
     acceptance_as_of?: string;
     analyse_check?: {
@@ -22,6 +23,7 @@ interface TopNavProps {
 export const TopNav: React.FC<TopNavProps> = ({
   activeTab,
   onTabChange,
+  onNavigateHome,
   metadata,
 }) => {
   const [showAnalyseModal, setShowAnalyseModal] = useState(false);
@@ -53,11 +55,30 @@ export const TopNav: React.FC<TopNavProps> = ({
         {/* Left: Product Brand and Four Destinations grouped */}
         <div className="flex items-center gap-6 flex-shrink-0">
           <div className="flex items-center gap-3 pr-6 border-r border-line h-8">
-            <span className="font-semibold text-text text-base tracking-tight">AutoImmune</span>
+            {onNavigateHome ? (
+              <button
+                onClick={onNavigateHome}
+                className="font-semibold text-text text-base tracking-tight hover:text-lead-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded"
+                title="Return to Project Home & Team Introduction"
+              >
+                AutoImmune
+              </button>
+            ) : (
+              <span className="font-semibold text-text text-base tracking-tight">AutoImmune</span>
+            )}
             <span className="text-text-3 font-normal hidden xl:inline">Research Console</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-1" aria-label="Main Navigation">
+            {onNavigateHome && (
+              <button
+                onClick={onNavigateHome}
+                className="h-9 px-3 rounded text-sm text-text-3 hover:text-text hover:bg-surface-2 transition-colors mr-1 border-r border-line pr-3.5"
+                title="Return to project introduction and team page"
+              >
+                ← Project Home
+              </button>
+            )}
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
