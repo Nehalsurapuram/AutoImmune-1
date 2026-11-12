@@ -19,7 +19,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
 
   // Ground truth first stop statistics
   const firstStops = snapshot.first_stop_distribution || {};
-  const totalUnits = metadata.total_evidence_rows || 241;
+  const totalUnits = metadata.total_units || 100;
 
   // Gate attrition items with strictly numerator and denominator on every rate
   const gateAttrition = [
@@ -30,7 +30,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
       total: totalUnits,
       rateStr: `${firstStops['V0'] ?? 31} of ${totalUnits} (${(((firstStops['V0'] ?? 31) / totalUnits) * 100).toFixed(1)}%)`,
       percent: (((firstStops['V0'] ?? 31) / totalUnits) * 100),
-      failureType: 'Syntax errors, unparseable diffs, compilation failures',
+      failureType: 'Syntax errors, unparseable diffs, compilation failures (all 31 in LLM cohort)',
     },
     {
       gate: 'V1: Visible Target Test',
@@ -39,7 +39,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
       total: totalUnits,
       rateStr: `${firstStops['V1'] ?? 24} of ${totalUnits} (${(((firstStops['V1'] ?? 24) / totalUnits) * 100).toFixed(1)}%)`,
       percent: (((firstStops['V1'] ?? 24) / totalUnits) * 100),
-      failureType: 'Ineffective patches that fail to resolve the target incident',
+      failureType: 'Ineffective patches that fail target test (9 scripted, 15 LLM)',
     },
     {
       gate: 'V2: Regression Test Suite',
@@ -48,7 +48,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
       total: totalUnits,
       rateStr: `${firstStops['V2'] ?? 9} of ${totalUnits} (${(((firstStops['V2'] ?? 9) / totalUnits) * 100).toFixed(1)}%)`,
       percent: (((firstStops['V2'] ?? 9) / totalUnits) * 100),
-      failureType: 'Regressive patches breaking previously healthy endpoints',
+      failureType: 'Regressive patches breaking existing endpoints (9 scripted, 0 LLM reached)',
     },
     {
       gate: 'V3: Semgrep Differential Analysis',
@@ -57,7 +57,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
       total: totalUnits,
       rateStr: `${firstStops['V3'] ?? 8} of ${totalUnits} (${(((firstStops['V3'] ?? 8) / totalUnits) * 100).toFixed(1)}%)`,
       percent: (((firstStops['V3'] ?? 8) / totalUnits) * 100),
-      failureType: 'New security vulnerabilities (e.g. SQL injection, path traversal)',
+      failureType: 'Security vulnerabilities in challenge suite (8 scripted, 0 LLM reached)',
     },
     {
       gate: 'Policy Escalation (Human Review)',
@@ -66,7 +66,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
       total: totalUnits,
       rateStr: `${firstStops['escalated (human review)'] ?? 5} of ${totalUnits} (${(((firstStops['escalated (human review)'] ?? 5) / totalUnits) * 100).toFixed(1)}%)`,
       percent: (((firstStops['escalated (human review)'] ?? 5) / totalUnits) * 100),
-      failureType: 'Exceeded line thresholds or touched un-diagnosed files',
+      failureType: 'Exceeded line thresholds or touched un-diagnosed files (3 scripted, 2 LLM)',
     },
     {
       gate: 'Canary Health Window Rollback',
@@ -75,7 +75,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
       total: totalUnits,
       rateStr: `${firstStops['rollback'] ?? 3} of ${totalUnits} (${(((firstStops['rollback'] ?? 3) / totalUnits) * 100).toFixed(1)}%)`,
       percent: (((firstStops['rollback'] ?? 3) / totalUnits) * 100),
-      failureType: 'Post-deploy crash or response time latency breach',
+      failureType: 'Staged demonstration rollback / canary latency breach (3 scripted in F06)',
     },
     {
       gate: 'Safely Promoted (Unstopped)',
@@ -84,7 +84,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
       total: totalUnits,
       rateStr: `${firstStops['not stopped'] ?? 20} of ${totalUnits} (${(((firstStops['not stopped'] ?? 20) / totalUnits) * 100).toFixed(1)}%)`,
       percent: (((firstStops['not stopped'] ?? 20) / totalUnits) * 100),
-      failureType: 'None - Successfully validated and promoted',
+      failureType: 'Passed all gates and canary window (15 scripted, 5 LLM)',
     },
   ];
 
@@ -99,7 +99,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
           Empirical Research Results &amp; Gate Evaluation
         </h1>
         <p className="text-sm text-text-3 mt-1.5 leading-relaxed">
-          Validation Gating Effectiveness Across 241 Patch Candidates and 75 Benchmark Runs
+          Validation Gating Effectiveness Across 100 Research Units (47 Scripted + 53 LLM Attempts from 222 Recorded Executions)
         </p>
       </div>
 
@@ -128,7 +128,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
           <div className="px-4 py-2 first:pl-0 flex flex-col gap-1">
             <span className="text-sm text-text-3 font-medium">V0 Syntax Rejection</span>
             <span className="text-2xl font-bold tracking-tight text-danger-ink tabular-nums">
-              31 of 241 (12.9%)
+              31 of 100 (31.0%)
             </span>
           </div>
 
@@ -136,7 +136,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
           <div className="px-4 py-2 flex flex-col gap-1">
             <span className="text-sm text-text-3 font-medium">V1 Ineffective Catch</span>
             <span className="text-2xl font-bold tracking-tight text-danger-ink tabular-nums">
-              24 of 241 (10.0%)
+              24 of 100 (24.0%)
             </span>
           </div>
 
@@ -144,7 +144,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
           <div className="px-4 py-2 flex flex-col gap-1">
             <span className="text-sm text-text-3 font-medium">V2 Regression Catch</span>
             <span className="text-2xl font-bold tracking-tight text-danger-ink tabular-nums">
-              9 of 241 (3.7%)
+              9 of 100 (9.0%)
             </span>
           </div>
 
@@ -152,7 +152,7 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
           <div className="px-4 py-2 flex flex-col gap-1">
             <span className="text-sm text-text-3 font-medium">V3 Security Catch</span>
             <span className="text-2xl font-bold tracking-tight text-danger-ink tabular-nums">
-              8 of 241 (3.3%)
+              8 of 100 (8.0%)
             </span>
           </div>
 
@@ -160,13 +160,13 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
           <div className="px-4 py-2 flex flex-col gap-1">
             <span className="text-sm text-text-3 font-medium">Auto-Apply Safe</span>
             <span className="text-2xl font-bold tracking-tight text-success-ink tabular-nums">
-              20 of 241 (8.3%)
+              20 of 100 (20.0%)
             </span>
           </div>
 
           {/* Metric 6 */}
           <div className="px-4 py-2 last:pr-0 flex flex-col gap-1">
-            <span className="text-sm text-text-3 font-medium">Rollback Precision</span>
+            <span className="text-sm text-text-3 font-medium">Staged Rollbacks</span>
             <span className="text-2xl font-bold tracking-tight text-text tabular-nums">
               3 of 3 (100.0%)
             </span>
@@ -188,13 +188,13 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
             </div>
 
             <p className="text-base text-text-2 leading-relaxed mb-4">
-              Sequential gate evaluation demonstrates strong layered filtering: V0 eliminates malformed LLM diffs; V1 rejects ineffective patches that do not reproduce the fix; V2 catches regression side-effects; V3 catches vulnerabilities introduced by the LLM.
+              Sequential gate evaluation demonstrates strong layered filtering: V0 eliminates malformed LLM diffs; V1 rejects ineffective patches that do not reproduce the fix; V2 catches regression side-effects in existing tests; V3 catches differential static security vulnerabilities in the challenge suite.
             </p>
 
             {/* Visual Attrition Funnel Chart (Accessible with direct labels) */}
             <div className="bg-surface p-5 rounded border border-line flex flex-col gap-3 mb-4" aria-label="Gate Attrition Chart">
               <div className="flex items-center justify-between text-sm font-semibold text-text">
-                <span>Gate Attrition Distribution (% of 241 Total Evaluated Patches)</span>
+                <span>Gate Attrition Distribution (% of 100 Deduplicated Research Units)</span>
                 <span className="text-text-3 font-normal text-sm">One question per chart · Direct labels</span>
               </div>
 
@@ -259,32 +259,32 @@ export const ResearchResults: React.FC<ResearchResultsProps> = ({
             </div>
 
             <p className="text-base text-text-2 leading-relaxed mb-4">
-              <strong>Core Finding:</strong> While the 4-gate verification suite and Actuator canary health window caught 100% of regressive (V2) and insecure (V3) patches, it suffered from <em>Silent Escape</em> on semantically incomplete fixes (such as whitespace-only string invariants).
+              <strong>Core Finding:</strong> The sequential 4-gate verification suite caught 100% of tested regressive (V2) and insecure (V3) candidates in the challenge suite. However, it suffered from <em>silent escapes</em> on semantically incomplete fixes (such as whitespace-only string invariants) that satisfied existing visible tests.
             </p>
 
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6 border-y border-line py-4 text-sm">
               <div>
-                <dt className="text-text-3 font-medium">Insecure Patch Rejection Rate</dt>
+                <dt className="text-text-3 font-medium">Insecure Patch Catch (Scripted Cohort)</dt>
                 <dd className="text-text font-bold text-base mt-0.5 text-success-ink">
                   8 of 8 (100.0%) caught by V3 Semgrep
                 </dd>
               </div>
               <div>
-                <dt className="text-text-3 font-medium">Regressive Patch Rejection Rate</dt>
+                <dt className="text-text-3 font-medium">Regressive Patch Catch (Scripted Cohort)</dt>
                 <dd className="text-text font-bold text-base mt-0.5 text-success-ink">
                   9 of 9 (100.0%) caught by V2 test suite
                 </dd>
               </div>
               <div>
-                <dt className="text-text-3 font-medium">Canary Rollback Precision</dt>
-                <dd className="text-text font-bold text-base mt-0.5 text-success-ink">
+                <dt className="text-text-3 font-medium">Staged Canary Rollback Demonstrations</dt>
+                <dd className="text-text font-bold text-base mt-0.5 text-text">
                   3 of 3 (100.0%) rollbacks reversed cleanly
                 </dd>
               </div>
               <div>
-                <dt className="text-text-3 font-medium">Silent Escape Rate (F01 Null Guard)</dt>
+                <dt className="text-text-3 font-medium">Unsafe Escape Rate (Policy B3)</dt>
                 <dd className="text-text font-bold text-base mt-0.5 text-warning-ink">
-                  1 of 241 (0.4%) escaped tests
+                  11/38 (28.9%) scripted · 2/7 (28.6%) LLM
                 </dd>
               </div>
             </dl>

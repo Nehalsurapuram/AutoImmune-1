@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { RunRecord, CandidateRecord } from '../../types/evidence';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { DiffViewer } from '../../components/common/DiffViewer';
@@ -70,14 +70,32 @@ export const PipelineExplorer: React.FC<PipelineExplorerProps> = ({
   const [outcomeFilter, setOutcomeFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Selected run: prefer initialRunId or first run with deployment or default
+  // Selected run: prefer initialRunId or first complete, evidence-backed run
   const [selectedRunId, setSelectedRunId] = useState<string>(() => {
     if (initialRunId && runs.some((r) => r.run_id === initialRunId)) {
       return initialRunId;
     }
-    const featured = runs.find((r) => r.run_id === 'f06-live-live-20261108t193456z');
-    return featured?.run_id || runs[0]?.run_id || '';
+    // 1. Complete live LLM run with full 10 stages, deploy, and promotion
+    const featuredLive = runs.find((r) => r.run_id === 'f06-live-live-20261108t193456z');
+    if (featuredLive) return featuredLive.run_id;
+
+    // 2. Complete recorded execution with candidates and completed outcome
+    const completedWithCands = runs.find(
+      (r) => r.candidates && r.candidates.length > 0 && r.outcome === 'completed'
+    );
+    if (completedWithCands) return completedWithCands.run_id;
+
+    // 3. Any run with candidate records (never an empty watch)
+    const runWithCands = runs.find((r) => r.candidates && r.candidates.length > 0);
+    return runWithCands?.run_id || runs[0]?.run_id || '';
   });
+
+  // Keep selectedRunId synchronized when parent passes an initialRunId
+  useEffect(() => {
+    if (initialRunId && runs.some((r) => r.run_id === initialRunId)) {
+      setSelectedRunId(initialRunId);
+    }
+  }, [initialRunId, runs]);
 
   // Selected candidate index within run
   const [selectedCandIdx, setSelectedCandIdx] = useState<number>(0);
@@ -112,7 +130,13 @@ export const PipelineExplorer: React.FC<PipelineExplorerProps> = ({
   }, [runs, faultFilter, modeFilter, outcomeFilter, searchQuery]);
 
   const currentRun = useMemo(() => {
-    return runs.find((r) => r.run_id === selectedRunId) || filteredRuns[0] || runs[0];
+    return (
+      runs.find((r) => r.run_id === selectedRunId) ||
+      filteredRuns.find((r) => r.candidates && r.candidates.length > 0) ||
+      filteredRuns[0] ||
+      runs.find((r) => r.candidates && r.candidates.length > 0) ||
+      runs[0]
+    );
   }, [runs, selectedRunId, filteredRuns]);
 
   const currentCandidate = useMemo<CandidateRecord | undefined>(() => {
@@ -662,7 +686,7 @@ export const PipelineExplorer: React.FC<PipelineExplorerProps> = ({
                       <thead className="bg-surface-2 text-text-3 border-b border-line">
                         <tr>
                           <th className="p-3 font-medium">Candidate</th>
-                          <th className="p-3 font-medium">Label / Intent</th>
+                          <th className="p-3 font-medium">Origin / Intent</th>
                           <th className="p-3 font-medium">Diff Size</th>
                           <th className="p-3 font-medium">Decision</th>
                         </tr>
@@ -679,8 +703,17 @@ export const PipelineExplorer: React.FC<PipelineExplorerProps> = ({
                             <td className="p-3 text-sm text-text">
                               <code>Candidate #{i + 1}</code>
                             </td>
-                            <td className="p-3 text-text-2">{c.offline_oracle_label || c.cohort || 'Candidate patch'}</td>
-                            <td className="p-3 tabular-nums text-text-3">{c.diff_lines || 12} lines</td>
+                            <td className="p-3 text-text-2">
+                              {c.cohort === 'llm' ? 'Live LLM draft' : `Scripted: ${c.candidate_id.replace(/^F\d+-scripted-/, '').slice(0, 8)}`}
+                              {c.offline_oracle_label && (
+                                <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-surface-2 text-text-3 border border-line" title="Post-hoc offline research label (never visible to runtime pipeline)">
+                                  post-hoc: {c.offline_oracle_label}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 tabular-nums text-text-3">
+                              {c.diff_lines != null ? `${c.diff_lines} lines` : '–'}
+                            </td>
                             <td className="p-3">
                               <StatusBadge status={c.decision?.decision || 'REJECT'} />
                             </td>
@@ -721,64 +754,108 @@ export const PipelineExplorer: React.FC<PipelineExplorerProps> = ({
                       </thead>
                       <tbody className="divide-y divide-line text-sm">
                         {/* V0 Gate */}
-                        <tr className="hover:bg-surface-2/40">
-                          <td className="p-3 font-bold text-text"><code>V0</code></td>
-                          <td className="p-3 text-text-2">Clean git apply &amp; Maven compile</td>
-                          <td className="p-3">
-                            <StatusBadge status={currentCandidate?.gates?.V0?.status || 'pass'} />
-                          </td>
-                          <td className="p-3 text-right tabular-nums text-text-2">
-                            {currentCandidate?.gates?.V0?.seconds ? `${currentCandidate.gates.V0.seconds.toFixed(2)}s` : '1.20s'}
-                          </td>
-                          <td className="p-3 text-text-3">
-                            {currentCandidate?.gates?.V0?.log_tail || 'Zero compilation errors'}
-                          </td>
-                        </tr>
+                        {(() => {
+                          const g = currentCandidate?.gates?.V0;
+                          const status = g?.status || 'not_run';
+                          const isUnrun = status === 'not_run';
+                          const duration = isUnrun ? '–' : (typeof g?.seconds === 'number' ? `${g.seconds.toFixed(2)}s` : '–');
+                          const findings = isUnrun
+                            ? 'Not executed'
+                            : (g?.log_tail && g.log_tail.trim())
+                              ? g.log_tail.trim()
+                              : (status === 'pass' ? 'Clean git apply and Maven compilation (exit code 0)' : 'Compilation or patch application failed');
+                          return (
+                            <tr className="hover:bg-surface-2/40">
+                              <td className="p-3 font-bold text-text"><code>V0</code></td>
+                              <td className="p-3 text-text-2">Clean git apply &amp; Maven compile</td>
+                              <td className="p-3">
+                                <StatusBadge status={status} />
+                              </td>
+                              <td className="p-3 text-right tabular-nums text-text-2">{duration}</td>
+                              <td className="p-3 text-text-3 text-sm max-w-[340px] truncate" title={findings}>
+                                {findings}
+                              </td>
+                            </tr>
+                          );
+                        })()}
 
                         {/* V1 Gate */}
-                        <tr className="hover:bg-surface-2/40">
-                          <td className="p-3 font-bold text-text"><code>V1</code></td>
-                          <td className="p-3 text-text-2">Visible target test for the fault</td>
-                          <td className="p-3">
-                            <StatusBadge status={currentCandidate?.gates?.V1?.status || 'pass'} />
-                          </td>
-                          <td className="p-3 text-right tabular-nums text-text-2">
-                            {currentCandidate?.gates?.V1?.seconds ? `${currentCandidate.gates.V1.seconds.toFixed(2)}s` : '3.40s'}
-                          </td>
-                          <td className="p-3 text-text-3">
-                            {currentCandidate?.gates?.V1?.log_tail || 'Target reproduction test passed'}
-                          </td>
-                        </tr>
+                        {(() => {
+                          const g = currentCandidate?.gates?.V1;
+                          const status = g?.status || 'not_run';
+                          const isUnrun = status === 'not_run';
+                          const duration = isUnrun ? '–' : (typeof g?.seconds === 'number' ? `${g.seconds.toFixed(2)}s` : '–');
+                          const findings = isUnrun
+                            ? 'Not executed (stopped by prior gate)'
+                            : (g?.log_tail && g.log_tail.trim())
+                              ? g.log_tail.trim()
+                              : (status === 'pass' ? 'Visible reproduction target test passed' : 'Target test reproduction failed');
+                          return (
+                            <tr className="hover:bg-surface-2/40">
+                              <td className="p-3 font-bold text-text"><code>V1</code></td>
+                              <td className="p-3 text-text-2">Visible target test for the fault</td>
+                              <td className="p-3">
+                                <StatusBadge status={status} />
+                              </td>
+                              <td className="p-3 text-right tabular-nums text-text-2">{duration}</td>
+                              <td className="p-3 text-text-3 text-sm max-w-[340px] truncate" title={findings}>
+                                {findings}
+                              </td>
+                            </tr>
+                          );
+                        })()}
 
                         {/* V2 Gate */}
-                        <tr className="hover:bg-surface-2/40">
-                          <td className="p-3 font-bold text-text"><code>V2</code></td>
-                          <td className="p-3 text-text-2">Full existing regression test suite</td>
-                          <td className="p-3">
-                            <StatusBadge status={currentCandidate?.gates?.V2?.status || 'pass'} />
-                          </td>
-                          <td className="p-3 text-right tabular-nums text-text-2">
-                            {currentCandidate?.gates?.V2?.seconds ? `${currentCandidate.gates.V2.seconds.toFixed(2)}s` : '14.10s'}
-                          </td>
-                          <td className="p-3 text-text-3">
-                            {currentCandidate?.gates?.V2?.log_tail || 'All existing unit & integration tests pass'}
-                          </td>
-                        </tr>
+                        {(() => {
+                          const g = currentCandidate?.gates?.V2;
+                          const status = g?.status || 'not_run';
+                          const isUnrun = status === 'not_run';
+                          const duration = isUnrun ? '–' : (typeof g?.seconds === 'number' ? `${g.seconds.toFixed(2)}s` : '–');
+                          const findings = isUnrun
+                            ? 'Not executed (stopped by prior gate)'
+                            : (g?.log_tail && g.log_tail.trim())
+                              ? g.log_tail.trim()
+                              : (status === 'pass' ? 'All existing unit & integration tests pass' : 'Regression test failures detected');
+                          return (
+                            <tr className="hover:bg-surface-2/40">
+                              <td className="p-3 font-bold text-text"><code>V2</code></td>
+                              <td className="p-3 text-text-2">Full existing regression test suite</td>
+                              <td className="p-3">
+                                <StatusBadge status={status} />
+                              </td>
+                              <td className="p-3 text-right tabular-nums text-text-2">{duration}</td>
+                              <td className="p-3 text-text-3 text-sm max-w-[340px] truncate" title={findings}>
+                                {findings}
+                              </td>
+                            </tr>
+                          );
+                        })()}
 
                         {/* V3 Gate */}
-                        <tr className="hover:bg-surface-2/40">
-                          <td className="p-3 font-bold text-text"><code>V3</code></td>
-                          <td className="p-3 text-text-2">Semgrep differential security analysis</td>
-                          <td className="p-3">
-                            <StatusBadge status={currentCandidate?.gates?.V3?.status || 'pass'} />
-                          </td>
-                          <td className="p-3 text-right tabular-nums text-text-2">
-                            {currentCandidate?.gates?.V3?.seconds ? `${currentCandidate.gates.V3.seconds.toFixed(2)}s` : '0.80s'}
-                          </td>
-                          <td className="p-3 text-text-3">
-                            {currentCandidate?.gates?.V3?.log_tail || '0 new security findings'}
-                          </td>
-                        </tr>
+                        {(() => {
+                          const g = currentCandidate?.gates?.V3;
+                          const status = g?.status || 'not_run';
+                          const isUnrun = status === 'not_run';
+                          const duration = isUnrun ? '–' : (typeof g?.seconds === 'number' ? `${g.seconds.toFixed(2)}s` : '–');
+                          const findings = isUnrun
+                            ? 'Not executed (stopped by prior gate)'
+                            : (g?.log_tail && g.log_tail.trim())
+                              ? g.log_tail.trim()
+                              : (status === 'pass' ? '0 new differential security findings' : 'Differential static scan identified security vulnerabilities');
+                          return (
+                            <tr className="hover:bg-surface-2/40">
+                              <td className="p-3 font-bold text-text"><code>V3</code></td>
+                              <td className="p-3 text-text-2">Semgrep differential security analysis</td>
+                              <td className="p-3">
+                                <StatusBadge status={status} />
+                              </td>
+                              <td className="p-3 text-right tabular-nums text-text-2">{duration}</td>
+                              <td className="p-3 text-text-3 text-sm max-w-[340px] truncate" title={findings}>
+                                {findings}
+                              </td>
+                            </tr>
+                          );
+                        })()}
                       </tbody>
                     </table>
                   </div>

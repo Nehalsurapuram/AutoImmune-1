@@ -124,7 +124,7 @@ export const Overview: React.FC<OverviewProps> = ({ snapshot, onNavigate }) => {
                     <th className="p-3 font-medium">Gate</th>
                     <th className="p-3 font-medium">Execution Objective</th>
                     <th className="p-3 font-medium">Failure Condition</th>
-                    <th className="p-3 font-medium text-right">Stops Caught</th>
+                    <th className="p-3 font-medium text-right">First-Stop Catch (100 Units)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line text-sm">
@@ -133,7 +133,7 @@ export const Overview: React.FC<OverviewProps> = ({ snapshot, onNavigate }) => {
                     <td className="p-3 text-text">Syntax &amp; Compilation</td>
                     <td className="p-3 text-text-3"><code>git apply --check</code> fails or <code>mvn compile</code> non-zero</td>
                     <td className="p-3 text-right font-semibold text-danger-ink tabular-nums">
-                      {snapshot.first_stop_distribution?.['V0'] ?? 31} of 241
+                      {snapshot.first_stop_distribution?.['V0'] ?? 31} of {metadata.total_units || 100} (31.0%)
                     </td>
                   </tr>
                   <tr className="hover:bg-surface-2/40">
@@ -141,7 +141,7 @@ export const Overview: React.FC<OverviewProps> = ({ snapshot, onNavigate }) => {
                     <td className="p-3 text-text">Visible Target Reproduction Test</td>
                     <td className="p-3 text-text-3">Fault reproduction unit test fails</td>
                     <td className="p-3 text-right font-semibold text-danger-ink tabular-nums">
-                      {snapshot.first_stop_distribution?.['V1'] ?? 24} of 241
+                      {snapshot.first_stop_distribution?.['V1'] ?? 24} of {metadata.total_units || 100} (24.0%)
                     </td>
                   </tr>
                   <tr className="hover:bg-surface-2/40">
@@ -149,7 +149,7 @@ export const Overview: React.FC<OverviewProps> = ({ snapshot, onNavigate }) => {
                     <td className="p-3 text-text">Regression Test Suite</td>
                     <td className="p-3 text-text-3">Any existing healthy unit/integration test regresses</td>
                     <td className="p-3 text-right font-semibold text-danger-ink tabular-nums">
-                      {snapshot.first_stop_distribution?.['V2'] ?? 9} of 241
+                      {snapshot.first_stop_distribution?.['V2'] ?? 9} of {metadata.total_units || 100} (9.0%)
                     </td>
                   </tr>
                   <tr className="hover:bg-surface-2/40">
@@ -157,12 +157,15 @@ export const Overview: React.FC<OverviewProps> = ({ snapshot, onNavigate }) => {
                     <td className="p-3 text-text">Differential Security Analysis</td>
                     <td className="p-3 text-text-3">Semgrep differential scan finds new vulnerability</td>
                     <td className="p-3 text-right font-semibold text-danger-ink tabular-nums">
-                      {snapshot.first_stop_distribution?.['V3'] ?? 8} of 241
+                      {snapshot.first_stop_distribution?.['V3'] ?? 8} of {metadata.total_units || 100} (8.0%)
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
+            <p className="text-sm text-text-3 mt-2 leading-relaxed">
+              First-stop distribution is evaluated over 100 deduplicated research units (47 scripted + 53 LLM attempts across 222 recorded evidence rows). Each unit stops at its earliest failing gate.
+            </p>
           </div>
 
           {/* Risk Tiers & Deterministic Decision Engine */}
@@ -250,7 +253,7 @@ export const Overview: React.FC<OverviewProps> = ({ snapshot, onNavigate }) => {
                 onClick={() => onNavigate('inspector')}
                 className="h-10 px-4 rounded border border-line bg-page text-text-2 hover:bg-surface-2 hover:text-text transition-colors flex items-center justify-between text-sm font-medium"
               >
-                <span>Inspect 241 Candidates in Patch Inspector</span>
+                <span>Inspect 241 Candidate Records in Patch Inspector</span>
                 <ArrowRight size={16} />
               </button>
 

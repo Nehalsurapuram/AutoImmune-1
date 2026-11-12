@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { CandidateRecord } from '../../types/evidence';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { DiffViewer } from '../../components/common/DiffViewer';
-import { Search, Filter, Check, FileCode, ShieldAlert } from 'lucide-react';
+import { Search, Filter, Check, FileCode, ShieldAlert, Minus } from 'lucide-react';
 
 interface PatchInspectorProps {
   candidates: CandidateRecord[];
@@ -197,7 +197,7 @@ export const PatchInspector: React.FC<PatchInspectorProps> = ({
               filteredCandidates.map((c) => {
                 const isSelected = c.candidate_id === currentCandidate?.candidate_id;
                 const faultDisplay = c.fault_id ? FAULT_TITLES[c.fault_id] || `Fault ${c.fault_id}` : 'General';
-                const labelDisplay = c.offline_oracle_label || (c.cohort === 'llm' ? 'Live LLM Patch' : 'Scripted Patch');
+                const originDisplay = c.cohort === 'llm' ? 'Live LLM Patch' : 'Scripted Patch';
                 const truncatedId = truncateMiddle(c.candidate_id, 20);
 
                 return (
@@ -212,16 +212,16 @@ export const PatchInspector: React.FC<PatchInspectorProps> = ({
                     }`}
                     aria-selected={isSelected}
                   >
-                    {/* Line 1: Fault, Candidate & Oracle label in plain words */}
+                    {/* Line 1: Fault & Origin in plain words */}
                     <div className="flex items-center justify-between gap-2 w-full">
                       <span className="text-sm font-semibold text-text truncate">
-                        {faultDisplay} · {labelDisplay}
+                        {faultDisplay} · {originDisplay}
                       </span>
                     </div>
 
-                    {/* Line 2: Meta text: Cohort · Decision · middle-truncated Candidate ID */}
+                    {/* Line 2: Meta text: Decision · middle-truncated Candidate ID · post-hoc oracle */}
                     <div className="flex items-center justify-between text-sm text-text-3">
-                      <span>{c.cohort === 'llm' ? 'Live LLM' : 'Scripted'} · {c.decision?.decision || 'REJECT'}</span>
+                      <span>{c.decision?.decision || 'REJECT'}{c.offline_oracle_label ? ` · oracle: ${c.offline_oracle_label}` : ''}</span>
                       <code className="text-sm text-text-3" title={c.candidate_id}>
                         {truncatedId}
                       </code>
@@ -302,7 +302,7 @@ export const PatchInspector: React.FC<PatchInspectorProps> = ({
 
               {/* Figure 6: Oracle Ground Truth */}
               <div className="px-4 py-2 last:pr-0 flex flex-col gap-1">
-                <span className="text-sm text-text-3 font-medium">Ground Truth Oracle</span>
+                <span className="text-sm text-text-3 font-medium">Post-Hoc Oracle Ground Truth</span>
                 <span className="text-2xl font-bold tracking-tight text-text">
                   {oracleLabel}
                 </span>
@@ -336,64 +336,108 @@ export const PatchInspector: React.FC<PatchInspectorProps> = ({
                     </thead>
                     <tbody className="divide-y divide-line text-sm">
                       {/* V0 */}
-                      <tr className="hover:bg-surface-2/40">
-                        <td className="p-3 font-bold text-text"><code>V0</code></td>
-                        <td className="p-3 text-text">Clean git apply &amp; Maven compile</td>
-                        <td className="p-3">
-                          <StatusBadge status={currentCandidate?.gates?.V0?.status || 'pass'} />
-                        </td>
-                        <td className="p-3 text-right tabular-nums text-text-2">
-                          {currentCandidate?.gates?.V0?.seconds ? `${currentCandidate.gates.V0.seconds.toFixed(2)}s` : '1.20s'}
-                        </td>
-                        <td className="p-3 text-text-3">
-                          {currentCandidate?.gates?.V0?.log_tail || 'Compilation clean; exit code 0'}
-                        </td>
-                      </tr>
+                      {(() => {
+                        const g = currentCandidate?.gates?.V0;
+                        const status = g?.status || 'not_run';
+                        const isUnrun = status === 'not_run';
+                        const duration = isUnrun ? '–' : (typeof g?.seconds === 'number' ? `${g.seconds.toFixed(2)}s` : '–');
+                        const findings = isUnrun
+                          ? 'Not executed'
+                          : (g?.log_tail && g.log_tail.trim())
+                            ? g.log_tail.trim()
+                            : (status === 'pass' ? 'Compilation clean; exit code 0' : 'Compilation or patch application failed');
+                        return (
+                          <tr className="hover:bg-surface-2/40">
+                            <td className="p-3 font-bold text-text"><code>V0</code></td>
+                            <td className="p-3 text-text">Clean git apply &amp; Maven compile</td>
+                            <td className="p-3">
+                              <StatusBadge status={status} />
+                            </td>
+                            <td className="p-3 text-right tabular-nums text-text-2">{duration}</td>
+                            <td className="p-3 text-text-3 text-sm max-w-[340px] truncate" title={findings}>
+                              {findings}
+                            </td>
+                          </tr>
+                        );
+                      })()}
 
                       {/* V1 */}
-                      <tr className="hover:bg-surface-2/40">
-                        <td className="p-3 font-bold text-text"><code>V1</code></td>
-                        <td className="p-3 text-text">Visible Target Reproduction Test</td>
-                        <td className="p-3">
-                          <StatusBadge status={currentCandidate?.gates?.V1?.status || 'pass'} />
-                        </td>
-                        <td className="p-3 text-right tabular-nums text-text-2">
-                          {currentCandidate?.gates?.V1?.seconds ? `${currentCandidate.gates.V1.seconds.toFixed(2)}s` : '3.40s'}
-                        </td>
-                        <td className="p-3 text-text-3">
-                          {currentCandidate?.gates?.V1?.log_tail || 'Reproduction test passed'}
-                        </td>
-                      </tr>
+                      {(() => {
+                        const g = currentCandidate?.gates?.V1;
+                        const status = g?.status || 'not_run';
+                        const isUnrun = status === 'not_run';
+                        const duration = isUnrun ? '–' : (typeof g?.seconds === 'number' ? `${g.seconds.toFixed(2)}s` : '–');
+                        const findings = isUnrun
+                          ? 'Not executed (stopped by prior gate)'
+                          : (g?.log_tail && g.log_tail.trim())
+                            ? g.log_tail.trim()
+                            : (status === 'pass' ? 'Reproduction target test passed' : 'Target test reproduction failed');
+                        return (
+                          <tr className="hover:bg-surface-2/40">
+                            <td className="p-3 font-bold text-text"><code>V1</code></td>
+                            <td className="p-3 text-text">Visible Target Reproduction Test</td>
+                            <td className="p-3">
+                              <StatusBadge status={status} />
+                            </td>
+                            <td className="p-3 text-right tabular-nums text-text-2">{duration}</td>
+                            <td className="p-3 text-text-3 text-sm max-w-[340px] truncate" title={findings}>
+                              {findings}
+                            </td>
+                          </tr>
+                        );
+                      })()}
 
                       {/* V2 */}
-                      <tr className="hover:bg-surface-2/40">
-                        <td className="p-3 font-bold text-text"><code>V2</code></td>
-                        <td className="p-3 text-text">Full Existing Regression Suite</td>
-                        <td className="p-3">
-                          <StatusBadge status={currentCandidate?.gates?.V2?.status || 'pass'} />
-                        </td>
-                        <td className="p-3 text-right tabular-nums text-text-2">
-                          {currentCandidate?.gates?.V2?.seconds ? `${currentCandidate.gates.V2.seconds.toFixed(2)}s` : '14.10s'}
-                        </td>
-                        <td className="p-3 text-text-3">
-                          {currentCandidate?.gates?.V2?.log_tail || 'Full suite passed without regression'}
-                        </td>
-                      </tr>
+                      {(() => {
+                        const g = currentCandidate?.gates?.V2;
+                        const status = g?.status || 'not_run';
+                        const isUnrun = status === 'not_run';
+                        const duration = isUnrun ? '–' : (typeof g?.seconds === 'number' ? `${g.seconds.toFixed(2)}s` : '–');
+                        const findings = isUnrun
+                          ? 'Not executed (stopped by prior gate)'
+                          : (g?.log_tail && g.log_tail.trim())
+                            ? g.log_tail.trim()
+                            : (status === 'pass' ? 'Full regression suite passed without failure' : 'Regression test failure in existing suite');
+                        return (
+                          <tr className="hover:bg-surface-2/40">
+                            <td className="p-3 font-bold text-text"><code>V2</code></td>
+                            <td className="p-3 text-text">Full Existing Regression Suite</td>
+                            <td className="p-3">
+                              <StatusBadge status={status} />
+                            </td>
+                            <td className="p-3 text-right tabular-nums text-text-2">{duration}</td>
+                            <td className="p-3 text-text-3 text-sm max-w-[340px] truncate" title={findings}>
+                              {findings}
+                            </td>
+                          </tr>
+                        );
+                      })()}
 
                       {/* V3 */}
-                      <tr className="hover:bg-surface-2/40">
-                        <td className="p-3 font-bold text-text"><code>V3</code></td>
-                        <td className="p-3 text-text">Semgrep Differential Security Analysis</td>
-                        <td className="p-3">
-                          <StatusBadge status={currentCandidate?.gates?.V3?.status || 'pass'} />
-                        </td>
-                        <td className="p-3 text-right tabular-nums text-text-2">
-                          {currentCandidate?.gates?.V3?.seconds ? `${currentCandidate.gates.V3.seconds.toFixed(2)}s` : '0.80s'}
-                        </td>
-                        <td className="p-3 text-text-3">
-                          {currentCandidate?.gates?.V3?.log_tail || '0 new differential security findings'}
-                        </td>
-                      </tr>
+                      {(() => {
+                        const g = currentCandidate?.gates?.V3;
+                        const status = g?.status || 'not_run';
+                        const isUnrun = status === 'not_run';
+                        const duration = isUnrun ? '–' : (typeof g?.seconds === 'number' ? `${g.seconds.toFixed(2)}s` : '–');
+                        const findings = isUnrun
+                          ? 'Not executed (stopped by prior gate)'
+                          : (g?.log_tail && g.log_tail.trim())
+                            ? g.log_tail.trim()
+                            : (status === 'pass' ? '0 new differential security findings' : 'Differential scan detected security vulnerabilities');
+                        return (
+                          <tr className="hover:bg-surface-2/40">
+                            <td className="p-3 font-bold text-text"><code>V3</code></td>
+                            <td className="p-3 text-text">Semgrep Differential Security Analysis</td>
+                            <td className="p-3">
+                              <StatusBadge status={status} />
+                            </td>
+                            <td className="p-3 text-right tabular-nums text-text-2">{duration}</td>
+                            <td className="p-3 text-text-3 text-sm max-w-[340px] truncate" title={findings}>
+                              {findings}
+                            </td>
+                          </tr>
+                        );
+                      })()}
                     </tbody>
                   </table>
                 </div>
@@ -416,6 +460,13 @@ export const PatchInspector: React.FC<PatchInspectorProps> = ({
                     <div className="bg-surface p-3 rounded border border-line text-sm text-danger-ink">
                       <code>{currentCandidate?.gates?.V3?.log_tail || 'rule: java.lang.security.audit.path-traversal / sql-injection'}</code>
                     </div>
+                  </div>
+                ) : currentCandidate?.gates?.V3?.status === 'not_run' ? (
+                  <div className="bg-surface border border-line rounded p-4 text-sm text-text-3 flex items-center justify-between">
+                    <span>Semgrep differential scan was not executed because a prior gate failed.</span>
+                    <span className="text-text-3 font-medium flex items-center gap-1">
+                      <Minus size={14} /> Not Executed
+                    </span>
                   </div>
                 ) : (
                   <div className="bg-surface border border-line rounded p-4 text-sm text-text-2 flex items-center justify-between">
