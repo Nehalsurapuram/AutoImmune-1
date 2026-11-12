@@ -76,16 +76,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </a>
           </nav>
         </div>
-
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => onEnterConsole('overview')}
-            className="h-9 px-4 rounded bg-action text-on-action text-sm font-medium hover:bg-action-hover transition-colors flex items-center gap-2"
-          >
-            <span>Explore Research Console</span>
-            <ArrowRight size={15} aria-hidden="true" />
-          </button>
-        </div>
       </header>
 
       <main className="flex-1 flex flex-col">
