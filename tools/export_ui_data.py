@@ -325,6 +325,36 @@ def build_timeline_stages(run_data: dict, incident: dict | None, diagnosis: dict
     return stages
 
 
+# Research extensions computed by their own analysis modules. The exporter only copies their verified JSON in;
+# it never recomputes them. key -> (path under results/, command that regenerates it, expected schema_version)
+RESEARCH_EXTENSIONS = {
+    "risk_estimation": ("risk/risk_estimation.json", "python -m tools.risk_model", 1),
+    "validation_cost": ("cost/validation_cost.json", "python -m tools.validation_cost", 1),
+}
+
+
+def load_research_extension(results_dir: Path, key: str) -> dict:
+    """{available, source, sha256_12, data} or {available: False, reason}. A missing or unknown file is reported,
+    never replaced with placeholder numbers."""
+    import hashlib
+    rel, cmd, version = RESEARCH_EXTENSIONS[key]
+    path = results_dir / rel
+    source = f"results/{rel}"
+    if not path.is_file():
+        return {"available": False, "source": source, "reason": f"{source} not found; run `{cmd}`"}
+    raw = path.read_bytes()
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        return {"available": False, "source": source, "reason": f"{source} is not valid JSON: {e}"}
+    if doc.get("analysis") != key or doc.get("schema_version") != version:
+        return {"available": False, "source": source,
+                "reason": f"{source} has analysis={doc.get('analysis')!r}, schema_version={doc.get('schema_version')!r}; "
+                          f"expected {key!r} v{version}. Regenerate with `{cmd}`."}
+    return {"available": True, "source": source, "sha256_12": hashlib.sha256(raw).hexdigest()[:12],
+            "generator": cmd, "data": doc}
+
+
 def export_all(output_paths: list[Path]):
     evidence_path = REPO_ROOT / "results" / "evidence.jsonl"
     results_dir = REPO_ROOT / "results"
@@ -660,6 +690,8 @@ def export_all(output_paths: list[Path]):
         "llm_diagnosis": llm_diagnosis_csv,
         "llm_patch_utility": llm_patch_utility_csv,
         "run_ledger": runs_csv,
+        "risk_estimation": load_research_extension(results_dir, "risk_estimation"),
+        "validation_cost": load_research_extension(results_dir, "validation_cost"),
         "research_questions": [
             {
                 "id": "RQ1",

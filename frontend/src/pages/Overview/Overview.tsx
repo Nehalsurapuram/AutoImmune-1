@@ -1,6 +1,8 @@
 import React from 'react';
 import { EvidenceSnapshot } from '../../types/evidence';
 import { ArrowRight, Terminal } from 'lucide-react';
+import ArcCardCarousel, { ArcCardItem } from '../../components/common/ArcCardCarousel';
+import { OverviewPortal } from './OverviewPortal';
 
 interface OverviewProps {
   snapshot: EvidenceSnapshot;
@@ -10,9 +12,12 @@ interface OverviewProps {
 export const Overview: React.FC<OverviewProps> = ({ snapshot, onNavigate }) => {
   const metadata = snapshot.metadata;
   const isAnalyseStale = metadata.analyse_check?.status === 'STALE';
+  const caseItems = React.useMemo(() => buildCaseItems(snapshot), [snapshot]);
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto bg-page text-text">
+    <div className="flex-1 flex flex-col bg-page text-text">
+      <OverviewPortal runs={metadata.total_runs_recorded} evaluations={metadata.total_evidence_rows} />
+
       {/* Top Page Title Header */}
       <div className="px-8 pt-8 pb-3">
         <h1 className="text-[28px] font-bold text-text tracking-tight leading-tight">
@@ -296,6 +301,85 @@ export const Overview: React.FC<OverviewProps> = ({ snapshot, onNavigate }) => {
           </dl>
         </div>
       </div>
+
+      {/* Case studies: scroll-driven arc carousel */}
+      {caseItems.length > 1 && (
+        <section aria-labelledby="case-studies-heading" className="mt-10 border-t border-line">
+          <div className="px-8 pt-8 pb-2 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 id="case-studies-heading" className="text-[20px] font-semibold text-text">
+                Case Studies
+              </h2>
+              <p className="text-sm text-text-3 mt-1">
+                Four recorded runs, one per outcome. Scroll to turn the wheel, or click a card.
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate('results')}
+              className="h-9 px-3.5 rounded border border-line bg-page text-text-2 hover:bg-surface-2 hover:text-text transition-colors flex items-center gap-2 text-sm font-medium"
+            >
+              <span>Full write-ups in Research Results</span>
+              <ArrowRight size={14} aria-hidden="true" />
+            </button>
+          </div>
+          <ArcCardCarousel
+            items={caseItems}
+            height="calc(100svh - 56px)"
+            topOffset={56}
+            scrollPerCard={0.5}
+            ariaLabel="Case studies"
+          />
+        </section>
+      )}
     </div>
   );
 };
+
+const DECISION_STYLE: Record<string, string> = {
+  AUTO_APPLY: 'bg-success-tint text-success-ink',
+  ESCALATE: 'bg-warning-tint text-warning-ink',
+  REJECT: 'bg-danger-tint text-danger-ink',
+};
+
+/**
+ * One carousel card per case study. Card facts come from the candidate record
+ * matched on run_id AND candidate_id: candidate ids repeat across runs, so
+ * matching on the id alone picks up a different run's result.
+ */
+function buildCaseItems(snapshot: EvidenceSnapshot): ArcCardItem[] {
+  return (snapshot.case_studies || []).map((cs) => {
+    const cand = snapshot.candidates.find(
+      (c) => c.run_id === cs.run_id && c.candidate_id === cs.candidate_id,
+    );
+    const decision = cand?.decision?.decision;
+    const outcome = cand?.outcome ? String(cand.outcome).replace(/_/g, ' ') : cand?.deployed ? 'deployed' : 'not deployed';
+    const oracle = cand?.offline_oracle_label;
+    return {
+      title: cs.title,
+      meta: cs.subtitle,
+      face: (
+        // Neighbouring cards overlap the lower part of each card, so the
+        // facts sit in the top two-thirds.
+        <div className="h-full w-full p-3 sm:p-4 flex flex-col gap-2 text-left">
+          <div className="flex items-start justify-between gap-2">
+            <span className="font-mono text-xl sm:text-2xl font-bold text-text leading-none">{cs.fault_id}</span>
+            {decision && (
+              <span
+                className={`text-[10px] sm:text-[11px] font-semibold px-1.5 py-0.5 rounded ${
+                  DECISION_STYLE[decision] ?? 'bg-surface-2 text-text-2'
+                }`}
+              >
+                {decision}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] sm:text-xs font-mono text-text-3 truncate">{cs.provider}</span>
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="text-xs sm:text-sm font-semibold text-text capitalize">{outcome}</span>
+            {oracle && <span className="text-[10px] sm:text-xs text-text-3">· oracle: {oracle}</span>}
+          </div>
+        </div>
+      ),
+    };
+  });
+}

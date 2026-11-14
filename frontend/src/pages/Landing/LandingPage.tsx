@@ -1,5 +1,10 @@
 import React from 'react';
 import { EvidenceSnapshot } from '../../types/evidence';
+import PerspectiveTunnelHero from '../../components/landing/PerspectiveTunnelHero';
+import { ThemeToggle } from '../../components/common/ThemeToggle';
+import { PipelineFeatures } from './PipelineFeatures';
+import { AppLiquidNav, AppNavItem } from '../../components/layout/AppLiquidNav';
+import { House, Workflow, CircleHelp, ClipboardCheck, Users } from 'lucide-react';
 import {
   ArrowRight,
   Shield,
@@ -12,6 +17,14 @@ import {
   Activity,
 } from 'lucide-react';
 
+const LANDING_NAV: Array<AppNavItem & { sectionId: string | null }> = [
+  { label: 'Introduction', icon: House, sectionId: null },
+  { label: 'How It Works', icon: Workflow, sectionId: 'how-it-works' },
+  { label: 'Research Problem', icon: CircleHelp, sectionId: 'research-problem' },
+  { label: 'Evaluation & RQ', icon: ClipboardCheck, sectionId: 'evaluation' },
+  { label: 'Project Team', icon: Users, sectionId: 'team' },
+];
+
 interface LandingPageProps {
   snapshot: EvidenceSnapshot;
   onEnterConsole: (initialTab?: 'overview' | 'explorer' | 'inspector' | 'results') => void;
@@ -23,6 +36,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 }) => {
   const metadata = snapshot.metadata;
   const isAnalyseStale = metadata?.analyse_check?.status === 'STALE';
+
+  // Liquid nav: the active item follows the section in view; a click scrolls there smoothly. While that
+  // scroll runs, the scroll-spy is paused so the drop does not hop through the sections in between.
+  const [activeNav, setActiveNav] = React.useState(0);
+  const spyPausedUntil = React.useRef(0);
+  React.useEffect(() => {
+    let raf = 0;
+    const spy = () => {
+      raf = 0;
+      if (Date.now() < spyPausedUntil.current) return;
+      let current = 0;
+      LANDING_NAV.forEach((item, i) => {
+        const el = item.sectionId ? document.getElementById(item.sectionId) : null;
+        if (el && el.getBoundingClientRect().top <= 120) current = i;
+      });
+      setActiveNav(current);
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(spy);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    spy();
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+  const goToSection = (i: number) => {
+    setActiveNav(i);
+    spyPausedUntil.current = Date.now() + 1000;
+    const id = LANDING_NAV[i].sectionId;
+    if (!id) window.scrollTo({ top: 0, behavior: 'smooth' });
+    else document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   // Smooth scroll helper for on-page anchors
   const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
@@ -45,40 +92,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </span>
           </div>
 
-          <nav className="hidden lg:flex items-center gap-6 text-sm" aria-label="Landing Navigation">
-            <a
-              href="#how-it-works"
-              onClick={(e) => scrollToSection(e, 'how-it-works')}
-              className="text-text-2 hover:text-text transition-colors"
-            >
-              How It Works
-            </a>
-            <a
-              href="#research-problem"
-              onClick={(e) => scrollToSection(e, 'research-problem')}
-              className="text-text-2 hover:text-text transition-colors"
-            >
-              Research Problem
-            </a>
-            <a
-              href="#evaluation"
-              onClick={(e) => scrollToSection(e, 'evaluation')}
-              className="text-text-2 hover:text-text transition-colors"
-            >
-              Evaluation &amp; RQ
-            </a>
-            <a
-              href="#team"
-              onClick={(e) => scrollToSection(e, 'team')}
-              className="text-text-2 hover:text-text transition-colors"
-            >
-              Project Team
-            </a>
-          </nav>
+          <div className="hidden sm:block">
+            <AppLiquidNav items={LANDING_NAV} active={activeNav} onSelect={goToSection} labelsFrom={1024} />
+          </div>
         </div>
+
+        <ThemeToggle />
       </header>
 
       <main className="flex-1 flex flex-col">
+        <PerspectiveTunnelHero />
+
         {/* ─── SECTION 1: INTRODUCTION (HERO) ───────────────────────────── */}
         <section className="px-6 lg:px-12 pt-14 pb-16 max-w-7xl mx-auto w-full border-b border-line">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
@@ -466,6 +490,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
         </section>
+
+        {/* ─── PIPELINE AT A GLANCE (live diagrams from the evidence snapshot) ─── */}
+        <PipelineFeatures snapshot={snapshot} />
 
         {/* ─── SECTION 3: THE RESEARCH PROBLEM ─────────────────────────── */}
         <section id="research-problem" className="px-6 lg:px-12 py-16 max-w-7xl mx-auto w-full border-b border-line">

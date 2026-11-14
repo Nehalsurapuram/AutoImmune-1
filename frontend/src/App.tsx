@@ -5,6 +5,8 @@ import { Overview } from './pages/Overview/Overview';
 import { PatchInspector } from './pages/PatchInspector/PatchInspector';
 import { ResearchResults } from './pages/ResearchResults/ResearchResults';
 import { LandingPage } from './pages/Landing/LandingPage';
+import { RiskEstimation } from './pages/RiskEstimation/RiskEstimation';
+import { ValidationCost } from './pages/ValidationCost/ValidationCost';
 import { EvidenceSnapshot } from './types/evidence';
 import { AlertCircle, RotateCcw } from 'lucide-react';
 
@@ -20,7 +22,11 @@ function getInitialRouteState(): { route: AppRoute; tab: NavTab } {
   // If path or hash explicitly indicates console or console sub-views
   if (path.startsWith('/console') || hash.startsWith('#/console') || hash.startsWith('#console')) {
     let tab: NavTab = 'overview';
-    if (path.includes('explorer') || path.includes('pipeline') || hash.includes('explorer') || hash.includes('pipeline')) {
+    if (path.includes('risk-estimation') || hash.includes('risk-estimation')) {
+      tab = 'risk-estimation';
+    } else if (path.includes('validation-cost') || hash.includes('validation-cost')) {
+      tab = 'validation-cost';
+    } else if (path.includes('explorer') || path.includes('pipeline') || hash.includes('explorer') || hash.includes('pipeline')) {
       tab = 'explorer';
     } else if (path.includes('inspector') || path.includes('patches') || hash.includes('inspector') || hash.includes('patches')) {
       tab = 'inspector';
@@ -141,7 +147,7 @@ export const App: React.FC = () => {
 
   // 2. Existing Research Console with 4 Verified Screens
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-page text-text font-sans selection:bg-lead-tint selection:text-text overflow-x-hidden">
+    <div className="min-h-[100dvh] flex flex-col bg-page text-text font-sans selection:bg-lead-tint selection:text-text overflow-x-clip">
       <TopNav
         activeTab={activeTab}
         onTabChange={(tab) => navigateTo('console', tab)}
@@ -153,7 +159,8 @@ export const App: React.FC = () => {
         }}
       />
 
-      <main className="flex-1 flex flex-col overflow-hidden">
+      {/* overflow-clip, not hidden/auto: those would break the sticky case-study carousel on Overview */}
+      <main className="flex-1 flex flex-col overflow-clip">
         {activeTab === 'overview' && (
           <Overview
             snapshot={snapshot}
@@ -181,6 +188,10 @@ export const App: React.FC = () => {
             onNavigateToInspector={() => navigateTo('console', 'inspector')}
           />
         )}
+
+        {activeTab === 'risk-estimation' && <RiskEstimation snapshot={snapshot} />}
+
+        {activeTab === 'validation-cost' && <ValidationCost snapshot={snapshot} />}
       </main>
     </div>
   );

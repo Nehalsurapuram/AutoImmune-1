@@ -1,7 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { GitBranch, Terminal, X, Info } from 'lucide-react';
+import {
+  GitBranch,
+  Terminal,
+  X,
+  Info,
+  LayoutDashboard,
+  Workflow,
+  FileDiff,
+  FlaskConical,
+  ShieldAlert,
+  Timer,
+  type LucideIcon,
+} from 'lucide-react';
+import { AppLiquidNav } from './AppLiquidNav';
+import { ThemeToggle } from '../common/ThemeToggle';
 
-export type NavTab = 'overview' | 'explorer' | 'inspector' | 'results';
+export type NavTab = 'overview' | 'explorer' | 'inspector' | 'results' | 'risk-estimation' | 'validation-cost';
 
 interface TopNavProps {
   activeTab: NavTab;
@@ -28,11 +42,13 @@ export const TopNav: React.FC<TopNavProps> = ({
 }) => {
   const [showAnalyseModal, setShowAnalyseModal] = useState(false);
 
-  const tabs: Array<{ id: NavTab; label: string }> = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'explorer', label: 'Pipeline Explorer' },
-    { id: 'inspector', label: 'Patch Inspector' },
-    { id: 'results', label: 'Research Results' },
+  const tabs: Array<{ id: NavTab; label: string; icon: LucideIcon }> = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'explorer', label: 'Pipeline Explorer', icon: Workflow },
+    { id: 'inspector', label: 'Patch Inspector', icon: FileDiff },
+    { id: 'results', label: 'Research Results', icon: FlaskConical },
+    { id: 'risk-estimation', label: 'Risk Estimation', icon: ShieldAlert },
+    { id: 'validation-cost', label: 'Validation Cost', icon: Timer },
   ];
 
   const analyseStatus = metadata?.analyse_check?.status || 'STALE';
@@ -66,37 +82,26 @@ export const TopNav: React.FC<TopNavProps> = ({
             ) : (
               <span className="font-semibold text-text text-base tracking-tight">AutoImmune</span>
             )}
-            <span className="text-text-3 font-normal hidden xl:inline">Research Console</span>
+            <span className="text-text-3 font-normal hidden 2xl:inline">Research Console</span>
           </div>
 
-          <nav className="hidden md:flex items-center gap-1" aria-label="Main Navigation">
+          <div className="hidden md:flex items-center gap-3">
             {onNavigateHome && (
               <button
                 onClick={onNavigateHome}
-                className="h-9 px-3 rounded text-sm text-text-3 hover:text-text hover:bg-surface-2 transition-colors mr-1 border-r border-line pr-3.5"
+                className="hidden lg:inline-flex items-center h-9 px-3 rounded text-sm text-text-3 hover:text-text hover:bg-surface-2 transition-colors whitespace-nowrap"
                 title="Return to project introduction and team page"
               >
                 ← Project Home
               </button>
             )}
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => onTabChange(tab.id)}
-                  className={`h-9 px-3.5 rounded text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus whitespace-nowrap ${
-                    isActive
-                      ? 'bg-selected text-text font-semibold'
-                      : 'text-text-2 hover:bg-surface-2 hover:text-text'
-                  }`}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
+            <AppLiquidNav
+              items={tabs}
+              active={tabs.findIndex((t) => t.id === activeTab)}
+              onSelect={(i) => onTabChange(tabs[i].id)}
+              labelsFrom={1340}
+            />
+          </div>
         </div>
 
         {/* Right: Snapshot Metadata & Analyse Status */}
@@ -109,7 +114,8 @@ export const TopNav: React.FC<TopNavProps> = ({
             </div>
           )}
 
-          <div className="hidden sm:flex items-center gap-1.5 text-sm">
+          {/* 2xl only: with six destinations the bar has no room for it at 1366px; Overview shows the date too */}
+          <div className="hidden 2xl:flex items-center gap-1.5 text-sm">
             <span className="text-text-3">as-of:</span>
             <span className="text-text font-medium">{metadata?.acceptance_as_of || '2026-11-08'}</span>
           </div>
@@ -129,6 +135,8 @@ export const TopNav: React.FC<TopNavProps> = ({
             <Terminal size={14} strokeWidth={1.75} aria-hidden="true" />
             <span>ANALYSE: {analyseStatus}</span>
           </button>
+
+          <ThemeToggle />
         </div>
       </header>
 

@@ -1,3 +1,12 @@
+// Colours are CSS variables (light and dark sets in src/styles/globals.css). Wrapping
+// each in color-mix lets Tailwind opacity modifiers such as border-line/40 work;
+// a bare var() cannot take <alpha-value>, so those classes used to emit no CSS.
+const tokenColor = (v) => `color-mix(in srgb, ${v} calc(<alpha-value> * 100%), transparent)`;
+const withAlpha = (obj) =>
+  Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => [k, typeof v === 'string' ? tokenColor(v) : withAlpha(v)])
+  );
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -6,7 +15,7 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
+      colors: withAlpha({
         page: "var(--page)",
         surface: "var(--surface)",
         "surface-2": "var(--surface-2)",
@@ -52,12 +61,14 @@ export default {
           hover: "var(--support-hover)",
           pressed: "var(--support-pressed)",
           ink: "var(--support-ink)",
+          line: "var(--support-line)",
           tint: "var(--support-tint)",
         },
         "on-support": "var(--on-support)",
         pop: {
           DEFAULT: "var(--pop)",
           ink: "var(--pop-ink)",
+          line: "var(--pop-line)",
           tint: "var(--pop-tint)",
         },
         danger: {
@@ -65,6 +76,7 @@ export default {
           hover: "var(--danger-hover)",
           pressed: "var(--danger-pressed)",
           ink: "var(--danger-ink)",
+          line: "var(--danger-line)",
           tint: "var(--danger-tint)",
         },
         "on-danger": "var(--on-danger)",
@@ -73,6 +85,7 @@ export default {
           hover: "var(--warning-hover)",
           pressed: "var(--warning-pressed)",
           ink: "var(--warning-ink)",
+          line: "var(--warning-line)",
           tint: "var(--warning-tint)",
         },
         "on-warning": "var(--on-warning)",
@@ -81,6 +94,7 @@ export default {
           hover: "var(--success-hover)",
           pressed: "var(--success-pressed)",
           ink: "var(--success-ink)",
+          line: "var(--success-line)",
           tint: "var(--success-tint)",
         },
         "on-success": "var(--on-success)",
@@ -89,6 +103,7 @@ export default {
           hover: "var(--info-hover)",
           pressed: "var(--info-pressed)",
           ink: "var(--info-ink)",
+          line: "var(--info-line)",
           tint: "var(--info-tint)",
         },
         "on-info": "var(--on-info)",
@@ -101,7 +116,8 @@ export default {
           6: "var(--series-6)",
           muted: "var(--series-muted)",
         }
-      },
+      }),
+      borderColor: { DEFAULT: "var(--line)" },
       fontFamily: {
         sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
         mono: ['ui-monospace', '"SF Mono"', 'Menlo', 'Monaco', 'Consolas', 'monospace'],

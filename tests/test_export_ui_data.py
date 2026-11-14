@@ -56,6 +56,44 @@ def test_export_ui_data_snapshot_validity(tmp_path):
             assert "offline_oracle_note" in c
 
 
+def test_research_extension_missing_file_is_reported_not_invented(tmp_path):
+    out = export_ui_data.load_research_extension(tmp_path, "risk_estimation")
+    assert out["available"] is False and "data" not in out
+    assert "python -m tools.risk_model" in out["reason"]
+
+
+def test_research_extension_rejects_wrong_schema(tmp_path):
+    (tmp_path / "cost").mkdir()
+    (tmp_path / "cost" / "validation_cost.json").write_text(
+        json.dumps({"analysis": "validation_cost", "schema_version": 99}), encoding="utf-8")
+    out = export_ui_data.load_research_extension(tmp_path, "validation_cost")
+    assert out["available"] is False and "schema_version" in out["reason"]
+
+
+def test_research_extension_copies_the_analysis_output_unchanged(tmp_path):
+    doc = {"analysis": "risk_estimation", "schema_version": 1, "empirical": {"estimates": [{"estimate": 0.5}]}}
+    (tmp_path / "risk").mkdir()
+    (tmp_path / "risk" / "risk_estimation.json").write_text(json.dumps(doc), encoding="utf-8")
+    out = export_ui_data.load_research_extension(tmp_path, "risk_estimation")
+    assert out["available"] is True and out["data"] == doc and len(out["sha256_12"]) == 12
+
+
+@pytest.mark.skipif(not (REPO_ROOT / "results" / "risk" / "risk_estimation.json").is_file()
+                    or not (REPO_ROOT / "results" / "cost" / "validation_cost.json").is_file(),
+                    reason="research extensions not generated")
+def test_snapshot_extensions_match_backend_outputs(tmp_path):
+    out_file = tmp_path / "snapshot.json"
+    export_ui_data.export_all([out_file])
+    snap = json.loads(out_file.read_text(encoding="utf-8"))
+    for key, rel in (("risk_estimation", "risk/risk_estimation.json"), ("validation_cost", "cost/validation_cost.json")):
+        backend = json.loads((REPO_ROOT / "results" / rel).read_text(encoding="utf-8"))
+        assert snap[key]["available"] is True
+        assert snap[key]["data"] == backend
+    # no model feature is an oracle-only field
+    feats = snap["risk_estimation"]["data"]["model"]["features"]
+    assert not {"top1_hit", "top3_hit", "oracle_localisation", "label", "oracle_label"} & set(feats)
+
+
 def test_timeline_stages_accuracy():
     run_json = {"run_id": "test-run", "fault_id": "F06"}
     incident = {"rule": "probe_mismatch", "endpoint": "/api/orders/2/discount", "evidence": ["err"]}
